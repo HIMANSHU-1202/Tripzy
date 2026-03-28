@@ -370,8 +370,12 @@ def results():
     if request.method == 'GET':
         return render_template('results.html', rides=[])
 
-    f = request.form.get('from', '').lower()
-    t = request.form.get('to', '').lower()
+    # Normalize: lowercase + strip spaces for fuzzy location match
+    def normalize(s):
+        return s.lower().replace(' ', '') if s else ''
+
+    f = normalize(request.form.get('from', ''))
+    t = normalize(request.form.get('to', ''))
 
     ac       = request.form.get('ac')
     gender   = request.form.get('gender')
@@ -383,17 +387,22 @@ def results():
     charging = request.form.get('charging')
     sort     = request.form.get('sort')
 
+    # Collect user's preference filters (for warning display only — NOT for filtering out rides)
+    user_prefs = {
+        'ac': ac, 'gender': gender, 'smoking': smoking,
+        'music': music, 'luggage': luggage, 'stops': stops,
+        'pets': pets, 'charging': charging
+    }
+
     matched = []
     for ride in all_rides:
-        if f in ride['from_loc'].lower() and t in ride['to_loc'].lower():
-            if ac      and ride['ac']      != ac:       continue
-            if gender  and ride['gender']  != gender:   continue
-            if smoking and ride['smoking'] != smoking:  continue
-            if music   and ride['music']   != music:    continue
-            if luggage and ride['luggage'] != luggage:  continue
-            if stops   and ride['stops']   != stops:    continue
-            if pets    and ride['pets']    != pets:     continue
-            if charging and ride['charging'] != charging: continue
+        # Case + space insensitive location match
+        ride_from = normalize(ride['from_loc'])
+        ride_to   = normalize(ride['to_loc'])
+        if f in ride_from and t in ride_to:
+            matched.append(ride)
+        # Also try partial match with original spacing
+        elif f and t and f in ride['from_loc'].lower() and t in ride['to_loc'].lower():
             matched.append(ride)
 
     # Enrich and filter out completed
@@ -408,7 +417,7 @@ def results():
     elif sort == "time":
         results.sort(key=lambda x: x['time'])
 
-    return render_template('results.html', rides=results)
+    return render_template('results.html', rides=results, user_prefs=user_prefs)
 
 
 # 📄 RIDE DETAIL + BOOK
@@ -629,24 +638,24 @@ def profile():
     upcoming_offered = [r for r in all_offered_e if r['smart_status'] == 'not_started']
     upcoming_joined  = [r for r in all_joined_e  if r['smart_status'] == 'not_started']
     upcoming         = upcoming_offered + upcoming_joined
+    # Tag each upcoming ride so template knows if it's offered or joined
+    for r in upcoming_offered:
+        r['is_offered'] = True
+    for r in upcoming_joined:
+        r['is_offered'] = False
 
+    # Strictly user-specific — no fallback to other users' data
     contacts = conn.execute(
         "SELECT * FROM emergency_contacts WHERE user_email=? LIMIT 1", (me,)
     ).fetchone()
-    if not contacts:
-        contacts = conn.execute("SELECT * FROM emergency_contacts LIMIT 1").fetchone()
 
     verify = conn.execute(
         "SELECT * FROM verification WHERE user_email=? LIMIT 1", (me,)
     ).fetchone()
-    if not verify:
-        verify = conn.execute("SELECT * FROM verification LIMIT 1").fetchone()
 
     car = conn.execute(
         "SELECT * FROM cars WHERE user_email=? LIMIT 1", (me,)
     ).fetchone()
-    if not car:
-        car = conn.execute("SELECT * FROM cars LIMIT 1").fetchone()
 
     # Load user from DB if logged in
     db_user = None
@@ -691,6 +700,8 @@ def profile():
         active_offered=active_offered,
         active_joined=active_joined,
         upcoming=upcoming,
+        upcoming_offered=upcoming_offered,
+        upcoming_joined=upcoming_joined,
         contacts=contacts,
         verify=verify,
         car=car,
@@ -797,21 +808,23 @@ def chat(user):
             ))
             conn.commit()
 
-            # 🔔 Notify receiver
+            # 🔔 Notify receiver only (not self)
             try:
-                conn.execute('''
-                INSERT INTO notifications (user_email, message, created_at)
-                VALUES (?, ?, ?)
-                ''', (
-                    user,
-                    f"💬 New message from {session.get('user_name', 'Someone')}",
-                    datetime.now().strftime("%d %b, %I:%M %p")
-                ))
-                conn.commit()
+                receiver_email = user  # user in URL is always the other person's email
+                if receiver_email and receiver_email != me:
+                    conn.execute('''
+                    INSERT INTO notifications (user_email, message, created_at)
+                    VALUES (?, ?, ?)
+                    ''', (
+                        receiver_email,
+                        f"💬 New message from {session.get('user_name', me.split('@')[0])}",
+                        datetime.now().strftime("%d %b, %I:%M %p")
+                    ))
+                    conn.commit()
             except:
                 pass
 
-        return redirect(url_for('chat', user=user, ride_id=rid))
+        return redirect(url_for('chat', user=user, ride_id=rid or ''))
 
     messages = conn.execute('''
     SELECT * FROM messages
