@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h5 class="section-title">🚗 My Car</h5>
+
+{% if car %}
+<!-- 🚗 CAR SHOWCASE -->
+<div class="car-showcase">
+
+    <!-- Photo Gallery -->
+    {% if car.images %}
+    <div class="car-gallery">
+        {% set imgs = car.images.split('||') %}
+        {% for img in imgs %}
+        {% if img %}
+        <img src="{{ img }}" class="car-gallery-img" alt="Car photo"
+            onclick="openPhoto('{{ img }}')">
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="car-image-placeholder">🚗</div>
+    {% endif %}
+
+    <div class="car-details">
+        <div class="car-name">{{ car.name }}</div>
+        <div class="car-model-tag">{{ car.model }}</div>
+        <div class="car-info-row">
+            <div class="car-info-item">
+                <span class="car-info-label">🎨 Color</span>
+                <span class="car-info-val">{{ car.color }}</span>
+            </div>
+            <div class="car-info-item">
+                <span class="car-info-label">🔢 Plate</span>
+                <span class="car-info-val plate-number">{{ car.plate }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button class="submit-btn"
+    onclick="document.getElementById('carForm').style.display='block'; this.style.display='none'">
+    ✏️ Edit Car Details
+</button>
+
+<div id="carForm" style="display:none; margin-top:15px;">
+
+{% else %}
+<div class="car-empty-state">
+    <div style="font-size:48px">🚗</div>
+    <p>No car added yet</p>
+    <p style="font-size:12px; color:#aaa;">Add your car to showcase it on your profile</p>
+</div>
+
+<div id="carForm">
+{% endif %}
+
+    <div class="form-card">
+        <h6 class="section-title">{{ 'Update Car' if car else 'Add Your Car' }}</h6>
+
+        <form method="POST" enctype="multipart/form-data" id="carFormEl">
+
+            <div class="input-group-custom">
+                <label>🚗 Car Name</label>
+                <input type="text" name="name" placeholder="e.g. Maruti Swift"
+                    value="{{ car.name if car else '' }}" required>
+            </div>
+
+            <div class="input-group-custom">
+                <label>⚙️ Model / Year</label>
+                <input type="text" name="model" placeholder="e.g. Swift VXI 2022"
+                    value="{{ car.model if car else '' }}" required>
+            </div>
+
+            <div class="input-group-custom">
+                <label>🎨 Color</label>
+                <input type="text" name="color" placeholder="e.g. Pearl White"
+                    value="{{ car.color if car else '' }}" required>
+            </div>
+
+            <div class="input-group-custom">
+                <label>🔢 Number Plate</label>
+                <input type="text" name="plate" placeholder="e.g. MH 12 AB 1234"
+                    value="{{ car.plate if car else '' }}" required
+                    style="text-transform:uppercase">
+            </div>
+
+            <!-- 📸 Multiple Image Upload -->
+            <div class="input-group-custom">
+                <label>📸 Car Photos (up to 5)</label>
+                <div class="upload-area" onclick="document.getElementById('carImages').click()">
+                    <div style="font-size:32px">📷</div>
+                    <p style="font-size:13px; color:#888; margin:4px 0">Tap to select photos</p>
+                    <p style="font-size:11px; color:#aaa">JPG, PNG supported</p>
+                </div>
+                <input type="file" id="carImages" name="images" accept="image/*"
+                    multiple style="display:none" onchange="previewImages(this)">
+            </div>
+
+            <!-- Image Previews -->
+            <div id="previewGrid" class="preview-grid"></div>
+
+            <!-- Hidden field to store base64 images -->
+            <input type="hidden" name="images_data" id="imagesData">
+
+            <button class="submit-btn mt-3" type="button" onclick="submitCarForm()">
+                💾 Save Car
+            </button>
+
+        </form>
+    </div>
+</div>
+
+<a href="/profile" class="back-link">← Back to Profile</a>
+
+
+<!-- 🖼️ Photo Fullscreen Viewer -->
+<div class="photo-viewer" id="photoViewer" style="display:none"
+    onclick="this.style.display='none'">
+    <img id="viewerImg" src="" style="max-width:100%; max-height:90vh; border-radius:12px">
+</div>
+
+
+<script>
+
+    let selectedImages = [];
+
+    function previewImages(input) {
+        let files = Array.from(input.files).slice(0, 5);
+        let grid = document.getElementById('previewGrid');
+        grid.innerHTML = '';
+        selectedImages = [];
+
+        files.forEach((file, index) => {
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                selectedImages[index] = e.target.result;
+
+                // Show preview
+                let img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'preview-img';
+                grid.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function submitCarForm() {
+        // Store base64 images joined by ||
+        document.getElementById('imagesData').value = selectedImages.join('||');
+        document.getElementById('carFormEl').submit();
+    }
+
+    function openPhoto(src) {
+        document.getElementById('viewerImg').src = src;
+        document.getElementById('photoViewer').style.display = 'flex';
+    }
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- HEADER -->
+<div class="inbox-header">
+    <h5>💬 Messages</h5>
+    <span class="inbox-count">{{ chats|length }} conversation{{ 's' if chats|length != 1 else '' }}</span>
+</div>
+
+{% if chats %}
+<div class="chat-list">
+    {% for chat in chats %}
+    <a href="/chat/{{ chat.user }}{% if chat.ride_id %}?ride_id={{ chat.ride_id }}{% endif %}" class="chat-item">
+
+        <!-- Avatar -->
+        <div class="chat-avatar-box">
+            <div class="chat-avatar-inner">{{ chat.user[0] | upper }}</div>
+        </div>
+
+        <!-- Info -->
+        <div class="chat-info">
+            <div class="chat-item-top">
+                <strong>{{ chat.user }}</strong>
+                <span class="chat-time">{{ chat.time }}</span>
+            </div>
+
+            <!-- Ride context badge -->
+            {% if chat.ride_info %}
+            <div class="chat-ride-badge">
+                🚗 {{ chat.ride_info.from_loc }} → {{ chat.ride_info.to_loc }}
+            </div>
+            {% endif %}
+
+            <p class="chat-preview">{{ chat.message }}</p>
+        </div>
+
+    </a>
+    {% endfor %}
+</div>
+
+{% else %}
+<!-- Empty State -->
+<div class="inbox-empty-state">
+    <div class="inbox-empty-icon">💬</div>
+    <h6>No messages yet</h6>
+    <p>Find a ride and message the driver, or post a ride and chat with passengers.</p>
+    <div style="display:flex; gap:8px; margin-top:16px">
+        <a href="/search" class="inbox-cta-btn">🔍 Find Ride</a>
+        <a href="/post"   class="inbox-cta-btn secondary">➕ Post Ride</a>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

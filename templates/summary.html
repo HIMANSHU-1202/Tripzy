@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h5 class="section-title">📊 Earnings Summary</h5>
+
+<!-- 💰 TOTAL EARNINGS -->
+<div class="earnings-hero">
+    <div class="earnings-label">Total Earnings</div>
+    <div class="earnings-amount">₹{{ total_earnings }}</div>
+    <div class="earnings-sub">from {{ total_rides }} completed ride{{ 's' if total_rides != 1 else '' }}</div>
+</div>
+
+<!-- 📊 STATS -->
+<div class="stats-row">
+    <div class="stat-card">
+        <h5>{{ total_rides }}</h5>
+        <p>Rides Done</p>
+    </div>
+    <div class="stat-card">
+        <h5>₹{{ avg_earning | int }}</h5>
+        <p>Avg / Ride</p>
+    </div>
+    <div class="stat-card">
+        <h5>₹{{ best_ride.price if best_ride else 0 }}</h5>
+        <p>Best Ride</p>
+    </div>
+</div>
+
+<!-- 💰 COMMISSION TRACKER -->
+<div class="commission-card">
+    <div class="commission-header">💰 Tripzy Commission ({{ commission_pct }}%)</div>
+    <div class="commission-row">
+        <span>Gross Earnings</span>
+        <span>₹{{ total_earnings }}</span>
+    </div>
+    <div class="commission-row deducted">
+        <span>Tripzy Commission ({{ commission_pct }}%)</span>
+        <span>- ₹{{ total_commission | int }}</span>
+    </div>
+    <div class="commission-row payout">
+        <span>Your Payout</span>
+        <span class="payout-amount">₹{{ driver_payout | int }}</span>
+    </div>
+</div>
+
+<!-- 🏆 BEST RIDE -->
+{% if best_ride %}
+<div class="best-ride-card">
+    <div class="best-ride-label">🏆 Best Earning Ride</div>
+    <div class="best-ride-route">{{ best_ride.from_loc }} → {{ best_ride.to_loc }}</div>
+    <div class="best-ride-meta">{{ best_ride.date }} | {{ best_ride.time }}</div>
+    <div class="best-ride-price">₹{{ best_ride.price }}</div>
+</div>
+{% endif %}
+
+<!-- 📋 RIDE BREAKDOWN -->
+<div class="card-box">
+    <h6>Ride-wise Breakdown</h6>
+    {% if rides %}
+        {% for ride in rides %}
+        <div class="earning-row">
+            <div class="earning-left">
+                <div class="earning-route">{{ ride.from_loc }} → {{ ride.to_loc }}</div>
+                <div class="earning-date">{{ ride.date }} | {{ ride.time }}</div>
+            </div>
+            <div class="earning-right">
+                <span class="earning-price">₹{{ ride.price }}</span>
+                <span class="earning-badge">✅ Done</span>
+            </div>
+        </div>
+        {% endfor %}
+        <div class="earning-total-row">
+            <span>Total Payout</span>
+            <span class="earning-total-val">₹{{ driver_payout | int }}</span>
+        </div>
+    {% else %}
+        <p class="empty-text">No completed rides yet 🚗</p>
+    {% endif %}
+</div>
+
+<a href="/profile" class="back-link">← Back to Profile</a>
+
+{% endblock %}

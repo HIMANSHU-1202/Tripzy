@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- TAB SWITCHER -->
+<div class="legal-tabs">
+    <button class="legal-tab active" id="tabTC" onclick="switchTab('tc')">📜 Terms</button>
+    <button class="legal-tab" id="tabPP" onclick="switchTab('pp')">🔒 Privacy</button>
+</div>
+
+
+<!-- ═══════════════════════════════════
+     📜 TERMS & CONDITIONS
+═══════════════════════════════════ -->
+<div id="sectionTC" class="legal-section">
+
+    <div class="legal-hero">
+        <div class="legal-hero-icon">📜</div>
+        <h5 class="legal-hero-title">Terms & Conditions</h5>
+        <p class="legal-hero-sub">Tripzy™ · Last updated 2026</p>
+    </div>
+
+    <div class="legal-card">
+
+        <div class="legal-item">
+            <div class="legal-num">01</div>
+            <div>
+                <div class="legal-heading">Introduction</div>
+                <p class="legal-text">Welcome to Tripzy™, a ride-sharing platform that connects drivers and passengers for shared travel. By accessing or using Tripzy, you agree to comply with these Terms and Conditions.</p>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num">02</div>
+            <div>
+                <div class="legal-heading">User Responsibilities</div>
+                <div class="legal-sub-heading">🚗 Drivers (Ride Providers)</div>
+                <ul class="legal-list">
+                    <li>Must provide accurate ride details (location, time, price, seats)</li>
+                    <li>Must ensure valid documents (license, RC, insurance)</li>
+                    <li>Must behave responsibly and follow traffic laws</li>
+                </ul>
+                <div class="legal-sub-heading" style="margin-top:10px">👤 Passengers (Ride Seekers)</div>
+                <ul class="legal-list">
+                    <li>Must provide correct booking details</li>
+                    <li>Must arrive on time</li>
+                    <li>Must respect drivers and co-passengers</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num">03</div>
+            <div>
+                <div class="legal-heading">Platform Role</div>
+                <p class="legal-text">Tripzy is a facilitator platform. We do not own vehicles, we do not provide transportation services — we connect users only.</p>
+                <div class="legal-highlight">👉 All rides are between independent users</div>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num">04</div>
+            <div>
+                <div class="legal-heading">Safety Disclaimer</div>
+                <p class="legal-text">Tripzy provides features like SOS and live tracking for assistance. However, Tripzy is not responsible for user behavior. Users are responsible for their own safety decisions.</p>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num">05</div>
+            <div>
+                <div class="legal-heading">Payments</div>
+                <p class="legal-text">Tripzy may charge a service/commission fee where applicable. All payments are between users unless otherwise stated.</p>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num">06</div>
+            <div>
+                <div class="legal-heading">Cancellations</div>
+                <p class="legal-text">Users may cancel rides or bookings. Frequent misuse may lead to account restrictions.</p>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num">07</div>
+            <div>
+                <div class="legal-heading">Account Suspension</div>
+                <p class="legal-text">Tripzy reserves the right to suspend or terminate accounts and remove content or rides if false information is provided or misconduct is reported.</p>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num">08</div>
+            <div>
+                <div class="legal-heading">Limitation of Liability</div>
+                <p class="legal-text">Tripzy is not liable for accidents, loss of belongings, or disputes between users.</p>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num">09</div>
+            <div>
+                <div class="legal-heading">Changes to Terms</div>
+                <p class="legal-text">We may update these terms at any time. Continued use of the platform means acceptance of the updated terms.</p>
+            </div>
+        </div>
+
+        <div class="legal-item" style="border-bottom:none">
+            <div class="legal-num">10</div>
+            <div>
+                <div class="legal-heading">Contact</div>
+                <p class="legal-text">For support, reach us at:</p>
+                <a href="mailto:support@tripzy.com" class="legal-contact-btn">📧 support@tripzy.com</a>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ═══════════════════════════════════
+     🔒 PRIVACY POLICY
+═══════════════════════════════════ -->
+<div id="sectionPP" class="legal-section" style="display:none">
+
+    <div class="legal-hero" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+        <div class="legal-hero-icon">🔒</div>
+        <h5 class="legal-hero-title">Privacy Policy</h5>
+        <p class="legal-hero-sub">Tripzy™ · Last updated 2026</p>
+    </div>
+
+    <div class="legal-card">
+
+        <div class="legal-item">
+            <div class="legal-num green">01</div>
+            <div>
+                <div class="legal-heading">Information We Collect</div>
+                <ul class="legal-list">
+                    <li>Name</li>
+                    <li>Contact details (phone / email)</li>
+                    <li>Ride data (locations, timings)</li>
+                    <li>Uploaded documents (for verification)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num green">02</div>
+            <div>
+                <div class="legal-heading">How We Use Data</div>
+                <ul class="legal-list">
+                    <li>Provide ride services</li>
+                    <li>Improve user experience</li>
+                    <li>Enable safety features (SOS, tracking)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num green">03</div>
+            <div>
+                <div class="legal-heading">Data Sharing</div>
+                <p class="legal-text">We may share limited data between driver and passenger for ride coordination, or with authorities if required by law.</p>
+                <div class="legal-highlight green-highlight">✅ We do NOT sell your data.</div>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num green">04</div>
+            <div>
+                <div class="legal-heading">Data Security</div>
+                <p class="legal-text">We take reasonable steps to protect your data, but no system is 100% secure.</p>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num green">05</div>
+            <div>
+                <div class="legal-heading">User Control</div>
+                <ul class="legal-list">
+                    <li>Update your profile anytime</li>
+                    <li>Request data deletion (coming soon)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num green">06</div>
+            <div>
+                <div class="legal-heading">Cookies</div>
+                <p class="legal-text">Tripzy may use basic cookies to improve your experience.</p>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num green">07</div>
+            <div>
+                <div class="legal-heading">Third-Party Services</div>
+                <p class="legal-text">We may use Maps (Google Maps) and Messaging (WhatsApp sharing). These services have their own privacy policies.</p>
+            </div>
+        </div>
+
+        <div class="legal-item">
+            <div class="legal-num green">08</div>
+            <div>
+                <div class="legal-heading">Updates</div>
+                <p class="legal-text">We may update this policy from time to time. We encourage you to review it periodically.</p>
+            </div>
+        </div>
+
+        <div class="legal-item" style="border-bottom:none">
+            <div class="legal-num green">09</div>
+            <div>
+                <div class="legal-heading">Contact</div>
+                <a href="mailto:support@tripzy.com" class="legal-contact-btn">📧 support@tripzy.com</a>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- FOOTER BRAND -->
+<div class="legal-footer">
+    © 2026 Tripzy™ — All rights reserved.
+</div>
+
+
+<script>
+function switchTab(tab) {
+    const tcSection = document.getElementById('sectionTC');
+    const ppSection = document.getElementById('sectionPP');
+    const tcTab     = document.getElementById('tabTC');
+    const ppTab     = document.getElementById('tabPP');
+
+    if (tab === 'tc') {
+        tcSection.style.display = 'block';
+        ppSection.style.display = 'none';
+        tcTab.classList.add('active');
+        ppTab.classList.remove('active');
+    } else {
+        tcSection.style.display = 'none';
+        ppSection.style.display = 'block';
+        ppTab.classList.add('active');
+        tcTab.classList.remove('active');
+    }
+    window.scrollTo(0, 0);
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tripzy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="app-container">
+
+    <!-- 🔝 Top Header -->
+    <div class="top-bar text-center">
+
+        <!-- 🚨 SOS -->
+        <a href="tel:100" class="sos-btn">SOS</a>
+
+        <!-- 🔔 Notification Bell -->
+        {% if session.get('user_email') %}
+        <a href="/notifications" class="notif-btn" id="notifBtn">
+            🔔
+            {% set unread = namespace(count=0) %}
+            {% if notif_count is defined and notif_count > 0 %}
+            <span class="notif-badge">{{ notif_count }}</span>
+            {% endif %}
+        </a>
+        {% endif %}
+
+        <!-- LOGO -->
+        <img src="{{ url_for('static', filename='logo1.png') }}" class="app-logo">
+
+        <!-- Tagline or User greeting -->
+        {% if session.get('user_name') %}
+        <p class="tagline">👋 Hi, {{ session.user_name }}</p>
+        {% else %}
+        <p class="tagline">Your Journey Partner</p>
+        {% endif %}
+
+    </div>
+
+    <!-- 📄 Page Content -->
+    <div class="content">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <!-- 📌 Legal Footer (above bottom nav) -->
+    <div class="app-footer">
+        <a href="/legal">📜 Terms</a>
+        <span>·</span>
+        <a href="/legal">🔒 Privacy</a>
+        <span>·</span>
+        <span>© 2026 Tripzy™</span>
+    </div>
+
+    <!-- 🔻 Bottom Navigation -->
+    <div class="bottom-nav">
+
+        <a href="{{ url_for('index') }}" class="nav-item">
+            🏠
+            <span>Home</span>
+        </a>
+
+        <a href="{{ url_for('search') }}" class="nav-item">
+            🔍
+            <span>Search</span>
+        </a>
+
+        <a href="{{ url_for('post_ride') }}" class="nav-item center-btn">+</a>
+
+        <a href="{{ url_for('inbox') }}" class="nav-item">
+            💬
+            <span>Inbox</span>
+        </a>
+
+        {% if session.get('user_email') %}
+        <a href="{{ url_for('profile') }}" class="nav-item">
+            👤
+            <span>Profile</span>
+        </a>
+        {% else %}
+        <a href="{{ url_for('login') }}" class="nav-item">
+            🔑
+            <span>Login</span>
+        </a>
+        {% endif %}
+
+    </div>
+
+</div>
+
+</body>
+</html>

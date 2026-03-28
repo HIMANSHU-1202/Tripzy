@@ -1,0 +1,2877 @@
+/* 🌍 Global */
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #eef2f7;
+    margin: 0;
+    padding: 0;
+}
+
+/* 📱 App Container */
+.app-container {
+    max-width: 420px;
+    margin: auto;
+    min-height: 100vh;
+    background: #ffffff;
+    position: relative;
+    box-shadow: 0 0 30px rgba(0,0,0,0.08);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+/* 🔝 Top Bar */
+.top-bar {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    padding: 15px;
+    text-align: center;
+}
+
+.app-title {
+    color: white;
+    margin: 0;
+    font-weight: 600;
+}
+
+/* 📄 Content */
+.content {
+    padding: 15px;
+    padding-bottom: 80px;
+}
+
+/* 🔻 Bottom Navigation */
+.bottom-nav {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 65px;
+    background: #ffffff;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid #eee;
+}
+
+/* Nav Items */
+.nav-item {
+    text-decoration: none;
+    color: #777;
+    font-size: 12px;
+    text-align: center;
+}
+
+.nav-item span {
+    display: block;
+    font-size: 11px;
+}
+
+/* Center Add Button (Fixed) */
+.center-btn:hover{ transform : scale(1.05); transition: 0.2s ease;}, .add {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white !important;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+    font-size: 22px;
+    font-weight: bold;
+
+    position: relative;
+    top: -18px;
+
+    box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+}
+
+/* 👋 Welcome Box */
+.welcome-box {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    padding: 15px;
+    border-radius: 15px;
+}
+
+/* ⚡ Action Cards */
+.action-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.action-card {
+    flex: 1;
+    background: #f7f9fc;
+    border-radius: 15px;
+    text-align: center;
+    padding: 15px;
+    text-decoration: none;
+    color: #333;
+    transition: 0.2s;
+}
+
+.action-card:hover {
+    background: #eef3f9;
+}
+
+.action-card .icon {
+    font-size: 20px;
+}
+
+/* 📌 Section Title */
+.section-title {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+/* 🚗 Ride List */
+.ride-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Ride Card */
+.ride-card {
+    background: #ffffff;
+    border-radius: 15px;
+    padding: 12px;
+    text-decoration: none;
+    color: #333;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    transition: 0.2s;
+}
+
+.ride-card:hover {
+    transform: translateY(-2px);
+}
+
+/* Route */
+.route {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+}
+
+/* Ride Info */
+.ride-info {
+    font-size: 12px;
+    margin-top: 5px;
+    color: #666;
+}
+
+/* Bottom Row */
+.ride-bottom {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 13px;
+}
+
+/* 💰 Price */
+.price {
+    color: #28a745;
+    font-weight: 600;
+}
+
+/* ➡ Arrow */
+.arrow {
+    color: #999;
+}
+
+/* 📭 Empty State */
+.empty-box {
+    text-align: center;
+    margin-top: 20px;
+    color: #888;
+}
+
+/* 🧾 Form Card */
+.form-card {
+    background: #ffffff;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+/* Inputs */
+.input-group-custom {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+.input-group-custom label {
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.input-group-custom input {
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    outline: none;
+}
+
+/* 🚀 Submit Button */
+.submit-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    font-weight: 600;
+}
+
+/* 🚗 Ride Detail */
+.ride-detail-card {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+}
+
+.route-big {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* Info Card */
+.info-card {
+    background: #ffffff;
+    padding: 15px;
+    border-radius: 15px;
+    margin-top: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+/* Bottom Action */
+.bottom-action {
+    position: fixed;
+    bottom: 75px;
+    width: 100%;
+    max-width: 420px;
+}
+
+/* Book Button */
+.book-btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    background: #28a745;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* 👤 Profile */
+.profile-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.profile-img {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+}
+
+/* Card Box */
+.card-box {
+    background: white;
+    padding: 15px;
+    border-radius: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.card-box h6 {
+    margin-bottom: 10px;
+}
+
+/* Info Row */
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+/* Verified Tag */
+.verified {
+    color: green;
+    font-weight: 500;
+}
+
+/* Ride Row */
+.ride-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+/* Empty */
+.empty-text {
+    color: #888;
+    text-align: center;
+}
+
+/* 🌟 Page Fade In */
+.content {
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ride-card {
+    transition: all 0.25s ease;
+}
+
+.ride-card:hover {
+    transform: translateY(-5px) scale(1.01);
+}
+
+button, .btn, .submit-btn {
+    transition: all 0.2s ease;
+}
+
+button:active, .btn:active, .submit-btn:active {
+    transform: scale(0.95);
+}
+
+.center-btn, .add {
+    transition: all 0.3s ease;
+}
+
+.center-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+}
+
+.center-btn:active {
+    transform: scale(0.9);
+}
+
+.nav a, .nav-item {
+    transition: 0.2s ease;
+}
+
+.nav a:active {
+    transform: scale(0.9);
+}
+
+input {
+    transition: 0.2s ease;
+}
+
+input:focus {
+    border-color: #4facfe;
+    box-shadow: 0 0 5px rgba(79,172,254,0.3);
+}
+
+
+.profile-img {
+    transition: 0.3s ease;
+}
+
+.profile-img:hover {
+    transform: scale(1.08);
+}
+
+/* Success */
+.success-msg {
+    background: #d4edda;
+    color: #155724;
+    padding: 10px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+/* Error */
+.error-msg {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 10px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+/* Logo */
+.app-logo {
+    width: 110px;
+    margin-bottom: 5px;
+}
+
+/* Tagline */
+.tagline {
+    font-size: 12px;
+    color: #666;
+    margin: 0;
+}
+
+.card-box h6 {
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.share-btn {
+    display: block;
+    margin-top: 10px;
+    text-align: center;
+    padding: 10px;
+    background: #25D366;
+    color: white;
+    border-radius: 10px;
+    text-decoration: none;
+}
+
+.sos-btn {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    background: red;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 12px;
+}
+
+/* Chip Group */
+.chip-group label {
+    font-size: 13px;
+    margin-top: 10px;
+    display: block;
+}
+
+/* Chips Container */
+.chips {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+    flex-wrap: wrap;
+}
+
+/* Hide Radio */
+.chips input {
+    display: none;
+}
+
+/* Chip Style */
+.chips label {
+    padding: 8px 12px;
+    border-radius: 20px;
+    background: #f1f3f6;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+/* Selected State */
+.chips input:checked + label {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+}
+
+/* 👤 Profile Header */
+.profile-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.profile-img {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+}
+
+.rating {
+    color: #666;
+    font-size: 13px;
+}
+
+
+/* 📊 Stats */
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.stat-card {
+    flex: 1;
+    background: #ffffff;
+    margin: 0 5px;
+    padding: 12px;
+    text-align: center;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.stat-card h5 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.stat-card p {
+    margin: 0;
+    font-size: 12px;
+    color: #777;
+}
+
+
+/* 🚗 Ride Cards */
+.ride-card-small {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    margin-bottom: 8px;
+    background: #f8f9fc;
+    border-radius: 12px;
+}
+
+.ride-card-small p {
+    font-size: 12px;
+    margin: 0;
+    color: #666;
+}
+
+
+/* 📄 Documents */
+.doc-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+}
+
+.badge-verified {
+    background: #28a745;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+}
+
+.booking-time {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    margin-top: 3px;
+}
+
+/* ⭐ Rating */
+.rating-form {
+    display: flex;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.rating-form select {
+    padding: 3px;
+    border-radius: 5px;
+}
+
+.rate-btn {
+    background: #4facfe;
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+/* Rated text */
+.rated {
+    font-size: 12px;
+    color: #f39c12;
+    margin-top: 4px;
+}
+
+/* Cancel button */
+.cancel-btn {
+    display: block;
+    margin-top: 5px;
+    font-size: 11px;
+    color: red;
+    text-decoration: none;
+}
+
+/* Right side */
+.action-side {
+    text-align: right;
+}
+
+/* Chat bubbles */
+.chat-bubble {
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    max-width: 70%;
+}
+
+.chat-bubble.me {
+    background: #4facfe;
+    color: white;
+    margin-left: auto;
+}
+
+.chat-bubble.other {
+    background: #f1f3f6;
+}
+
+/* Chat input */
+.chat-input {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+}
+
+.chat-input button {
+    padding: 10px 15px;
+    border: none;
+    background: #4facfe;
+    color: white;
+    border-radius: 10px;
+}
+
+/* Chat list */
+.chat-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    text-decoration: none;
+    color: black;
+}
+
+.chat-avatar {
+    font-size: 24px;
+    margin-right: 10px;
+}
+
+.chat-info {
+    flex: 1;
+}
+
+.chat-info p {
+    font-size: 12px;
+    color: #777;
+    margin: 0;
+}
+
+.chat-time {
+    font-size: 11px;
+    color: #999;
+}
+
+
+/* Chat screen */
+.chat-header {
+    padding: 10px;
+    font-weight: 600;
+}
+
+.chat-box {
+    height: 60vh;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.chat-bubble {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    max-width: 70%;
+}
+
+.chat-bubble.me {
+    background: #4facfe;
+    color: white;
+    margin-left: auto;
+}
+
+.chat-bubble.other {
+    background: #f1f3f6;
+}
+
+.chat-input {
+    display: flex;
+    gap: 5px;
+    padding: 10px;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+}
+
+.chat-input button {
+    background: #4facfe;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+/* Home */
+.home-header {
+    margin-bottom: 15px;
+}
+
+.home-header p {
+    color: #777;
+    font-size: 13px;
+}
+
+/* Quick actions */
+.quick-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.action-card {
+    flex: 1;
+    background: #fff;
+    border-radius: 15px;
+    padding: 15px;
+    text-align: center;
+    text-decoration: none;
+    color: black;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.action-card div {
+    font-size: 24px;
+}
+
+.action-card p {
+    margin-top: 5px;
+    font-size: 12px;
+}
+
+/* Header */
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+/* Filter button */
+.filter-btn {
+    background: #4facfe;
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+}
+
+/* Filter panel */
+.filter-panel {
+    display: none;
+    background: white;
+    padding: 15px;
+    border-radius: 15px;
+    margin-bottom: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+.filter-panel.show {
+    display: block;
+}
+
+/* Apply button */
+.apply-btn {
+    margin-top: 10px;
+    width: 100%;
+    background: #4facfe;
+    border: none;
+    padding: 10px;
+    border-radius: 10px;
+    color: white;
+}
+
+.primary-btn {
+    background: #4facfe;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 10px;
+    width: 100%;
+}
+
+.danger-btn {
+    background: #ff4d4d;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 10px;
+    width: 100%;
+}
+
+.small-text {
+    font-size: 12px;
+    color: #777;
+    margin-top: 5px;
+}
+
+/* Ride action buttons */
+.ride-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.mini-btn {
+    flex: 1;
+    padding: 6px;
+    border: none;
+    border-radius: 8px;
+    background: #4facfe;
+    color: white;
+    font-size: 12px;
+}
+
+.mini-btn.danger {
+    background: #ff4d4d;
+}
+
+/* Bottom action fixed */
+.bottom-action {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 10px;
+    border-top: 1px solid #eee;
+}
+
+/* Book button */
+.book-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    background: #4facfe;
+    color: white;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+/* Share button */
+.share-btn {
+    display: block;
+    text-align: center;
+    width: 100%;
+    padding: 10px;
+    border-radius: 12px;
+    background: #25D366;
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* 🗺️ Track Header */
+.track-header {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    padding: 16px;
+    border-radius: 15px;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.track-route {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.track-status {
+    font-size: 13px;
+    color: #fff;
+    opacity: 0.9;
+}
+
+/* 🗺️ Map Container */
+.map-container {
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.map-refresh-badge {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+/* 📊 Live Info Cards */
+.live-info-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.live-info-card {
+    flex: 1;
+    background: white;
+    border-radius: 12px;
+    padding: 10px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.live-icon {
+    font-size: 18px;
+}
+
+.live-label {
+    font-size: 10px;
+    color: #888;
+    margin-top: 2px;
+}
+
+.live-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #333;
+    margin-top: 3px;
+    word-break: break-all;
+}
+
+/* 🚦 Status Badge */
+.status-badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-badge.started {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.not_started {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.completed {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+/* 📤 Share Section */
+.share-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.share-live-btn {
+    width: 100%;
+    padding: 13px;
+    border: none;
+    border-radius: 12px;
+    background: #25D366;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.back-btn {
+    display: block;
+    text-align: center;
+    padding: 11px;
+    border-radius: 12px;
+    background: #f1f3f6;
+    color: #333;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* ✅ Verified Driver Badge */
+.verified-badge {
+    display: inline-block;
+    background: #d4edda;
+    color: #155724;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+/* 🚦 Status Badge */
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+}
+.status-badge.started    { background: #d4edda; color: #155724; }
+.status-badge.not_started{ background: #fff3cd; color: #856404; }
+.status-badge.completed  { background: #e2e3e5; color: #383d41; }
+
+/* 🗺️ Inline Tracking Panel */
+.tracking-panel {
+    width: 100%;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Status Bar inside tracking panel */
+.track-status-bar {
+    background: #fff3cd;
+    color: #856404;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 500;
+}
+
+/* Coords Row */
+.coords-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.coord-box {
+    flex: 1;
+    background: #f8f9fc;
+    border-radius: 10px;
+    padding: 8px 6px;
+    text-align: center;
+}
+
+.coord-label {
+    display: block;
+    font-size: 9px;
+    color: #999;
+    margin-bottom: 3px;
+}
+
+.coord-val {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: #333;
+    word-break: break-all;
+}
+
+/* Track button active state */
+.track-btn {
+    background: #4facfe;
+}
+
+/* 📞 Emergency Contact Row */
+.contact-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.call-btn {
+    background: #28a745;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    text-decoration: none;
+}
+
+/* Edit contacts button */
+.edit-contacts-btn {
+    display: block;
+    text-align: center;
+    margin-top: 10px;
+    padding: 9px;
+    background: #f1f3f6;
+    color: #333;
+    border-radius: 10px;
+    font-size: 13px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* Pending badge */
+.badge-pending {
+    background: #fff3cd;
+    color: #856404;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+}
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* 📞 Emergency Contact Section */
+.contact-section {
+    background: #f8f9fc;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+}
+
+.contact-label {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.contact-divider {
+    text-align: center;
+    color: #aaa;
+    font-size: 12px;
+    margin: 12px 0;
+}
+
+/* ℹ️ Info Box */
+.info-box {
+    background: #e8f4fd;
+    color: #0c5460;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 12px;
+    margin-top: 16px;
+    line-height: 1.6;
+}
+
+/* ← Back Link */
+.back-link {
+    display: block;
+    text-align: center;
+    margin-top: 14px;
+    font-size: 13px;
+    color: #4facfe;
+    text-decoration: none;
+}
+
+/* ✅ Doc Upload Card */
+.doc-upload-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8f9fc;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+}
+
+.doc-upload-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.doc-upload-icon {
+    font-size: 24px;
+}
+
+.doc-upload-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.doc-upload-sub {
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+}
+
+.doc-upload-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+/* Upload Button Label */
+.upload-label {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.upload-status {
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Summary btn */
+.summary-btn {
+    display: block;
+    text-align: center;
+    padding: 10px;
+    background: #f1f3f6;
+    color: #333;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 15px;
+}
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* 💰 Earnings Hero Card */
+.earnings-hero {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    border-radius: 18px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.earnings-label {
+    font-size: 13px;
+    opacity: 0.85;
+    margin-bottom: 6px;
+}
+
+.earnings-amount {
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+.earnings-sub {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-top: 4px;
+}
+
+/* 🏆 Best Ride Card */
+.best-ride-card {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 15px;
+}
+
+.best-ride-label {
+    font-size: 12px;
+    color: #f39c12;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.best-ride-route {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+
+.best-ride-meta {
+    font-size: 12px;
+    color: #888;
+    margin-top: 3px;
+}
+
+.best-ride-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: #28a745;
+    margin-top: 6px;
+}
+
+/* 📋 Earning Row */
+.earning-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.earning-left {
+    flex: 1;
+}
+
+.earning-route {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+.earning-date {
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+}
+
+.earning-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.earning-price {
+    font-size: 15px;
+    font-weight: 700;
+    color: #28a745;
+}
+
+.earning-badge {
+    font-size: 10px;
+    background: #d4edda;
+    color: #155724;
+    padding: 2px 7px;
+    border-radius: 10px;
+}
+
+/* Total Row */
+.earning-total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0 4px;
+    font-weight: 700;
+    font-size: 15px;
+    margin-top: 4px;
+}
+
+.earning-total-val {
+    color: #28a745;
+    font-size: 18px;
+}
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* 🎟 Receipt Card */
+.receipt-card {
+    background: white;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+    margin-bottom: 12px;
+}
+
+/* Receipt Header */
+.receipt-header {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    text-align: center;
+    padding: 20px 16px 16px;
+}
+
+.receipt-check {
+    font-size: 32px;
+    margin-bottom: 6px;
+}
+
+.receipt-title {
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.receipt-subtitle {
+    font-size: 12px;
+    opacity: 0.85;
+    margin-top: 3px;
+}
+
+/* Ticket Tear Divider */
+.receipt-divider {
+    display: flex;
+    align-items: center;
+    position: relative;
+    background: #f5f7fa;
+    padding: 0;
+    height: 16px;
+}
+
+.receipt-dot {
+    width: 20px;
+    height: 20px;
+    background: #eef2f7;
+    border-radius: 50%;
+    position: absolute;
+    top: -10px;
+}
+
+.receipt-dot.left  { left: -10px; }
+.receipt-dot.right { right: -10px; }
+
+.receipt-line {
+    flex: 1;
+    border-top: 2px dashed #dde3ec;
+    margin: 0 14px;
+}
+
+/* Receipt Body */
+.receipt-body {
+    padding: 14px 16px;
+    background: white;
+}
+
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.receipt-row:last-child {
+    border-bottom: none;
+}
+
+.receipt-label {
+    font-size: 12px;
+    color: #888;
+}
+
+.receipt-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Price Row */
+.receipt-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: white;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.receipt-price {
+    font-size: 22px;
+    font-weight: 700;
+    color: #28a745;
+}
+
+/* Share Receipt Button */
+.receipt-share-btn {
+    display: block;
+    text-align: center;
+    padding: 13px;
+    background: #25D366;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    border-radius: 0 0 18px 18px;
+}
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* 🚗 Car Showcase */
+.car-showcase {
+    background: white;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    margin-bottom: 14px;
+}
+
+.car-image {
+    width: 100%;
+    height: 190px;
+    object-fit: cover;
+}
+
+.car-image-placeholder {
+    width: 100%;
+    height: 190px;
+    background: #f1f3f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 60px;
+}
+
+.car-details {
+    padding: 14px 16px;
+}
+
+.car-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: #222;
+}
+
+.car-model-tag {
+    display: inline-block;
+    background: #e8f4fd;
+    color: #0c5460;
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-top: 4px;
+    margin-bottom: 12px;
+}
+
+.car-info-row {
+    display: flex;
+    gap: 12px;
+}
+
+.car-info-item {
+    flex: 1;
+    background: #f8f9fc;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+}
+
+.car-info-label {
+    display: block;
+    font-size: 10px;
+    color: #999;
+    margin-bottom: 4px;
+}
+
+.car-info-val {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+}
+
+.plate-number {
+    font-family: monospace;
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: #222;
+}
+
+/* Empty car state */
+.car-empty-state {
+    text-align: center;
+    padding: 30px;
+    color: #888;
+    background: #f8f9fc;
+    border-radius: 16px;
+    margin-bottom: 16px;
+}
+
+/* Status badge improvements */
+.status-badge.started {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.not_started {
+    background: #fff3cd;
+    color: #856404;
+}
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* ===== 💬 CHAT ===== */
+
+.chat-header-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 4px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.chat-back {
+    font-size: 20px;
+    text-decoration: none;
+    color: #333;
+    padding: 4px 8px;
+}
+
+.chat-header-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chat-header-avatar {
+    font-size: 28px;
+    background: #f1f3f6;
+    border-radius: 50%;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-header-name {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.chat-header-status {
+    font-size: 11px;
+    color: #aaa;
+}
+
+.chat-box {
+    height: 55vh;
+    overflow-y: auto;
+    padding: 10px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chat-bubble {
+    max-width: 75%;
+    padding: 10px 13px;
+    border-radius: 16px;
+    word-break: break-word;
+}
+
+.chat-bubble.me {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-bubble.other {
+    background: #f1f3f6;
+    color: #333;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+
+.bubble-text {
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.bubble-time {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-top: 4px;
+    text-align: right;
+}
+
+.chat-input-bar {
+    position: sticky;
+    bottom: 65px;
+    background: white;
+    padding: 10px 0;
+    border-top: 1px solid #eee;
+}
+
+.chat-form {
+    display: flex;
+    gap: 8px;
+}
+
+.chat-form input {
+    flex: 1;
+    padding: 11px 14px;
+    border-radius: 24px;
+    border: 1px solid #ddd;
+    outline: none;
+    font-size: 14px;
+}
+
+.chat-send-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.chat-empty {
+    text-align: center;
+    margin-top: 60px;
+    color: #888;
+}
+
+/* Inbox empty */
+.inbox-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #888;
+}
+
+/* ===== 🎟 RECEIPT MODAL ===== */
+
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.receipt-modal-card {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(40px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Receipt card styles */
+.receipt-header {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    text-align: center;
+    padding: 20px 16px 16px;
+}
+.receipt-check    { font-size: 32px; margin-bottom: 6px; }
+.receipt-title    { font-size: 17px; font-weight: 700; }
+.receipt-subtitle { font-size: 12px; opacity: 0.85; margin-top: 3px; }
+
+.receipt-divider {
+    display: flex;
+    align-items: center;
+    position: relative;
+    background: #f5f7fa;
+    height: 16px;
+}
+.receipt-dot        { width: 20px; height: 20px; background: #eef2f7; border-radius: 50%; position: absolute; top: -10px; }
+.receipt-dot.left   { left: -10px; }
+.receipt-dot.right  { right: -10px; }
+.receipt-line       { flex: 1; border-top: 2px dashed #dde3ec; margin: 0 14px; }
+
+.receipt-body { padding: 14px 16px; background: white; }
+.receipt-row  { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #f5f5f5; }
+.receipt-row:last-child { border-bottom: none; }
+.receipt-label { font-size: 12px; color: #888; }
+.receipt-value { font-size: 13px; font-weight: 600; color: #333; }
+
+.receipt-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    font-weight: 600;
+    font-size: 14px;
+}
+.receipt-price { font-size: 22px; font-weight: 700; color: #28a745; }
+
+.receipt-share-btn {
+    display: block;
+    text-align: center;
+    padding: 12px;
+    background: #25D366;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    border-radius: 10px;
+}
+
+/* ===== 💬 MESSAGE BUTTONS ===== */
+
+.msg-driver-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    background: #f1f3f6;
+    color: #333;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.result-action-btn {
+    flex: 1;
+    display: block;
+    text-align: center;
+    padding: 7px;
+    background: #f1f3f6;
+    color: #333;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.result-action-btn.msg {
+    background: #e8f4fd;
+    color: #0c5460;
+}
+
+/* ===== 🚗 CAR GALLERY ===== */
+
+.car-gallery {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 10px;
+    background: #f8f9fc;
+    scroll-snap-type: x mandatory;
+}
+
+.car-gallery-img {
+    width: 200px;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 12px;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.car-gallery-img:hover { transform: scale(1.02); }
+
+/* Upload area */
+.upload-area {
+    border: 2px dashed #ddd;
+    border-radius: 14px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.2s;
+    background: #fafbfc;
+}
+
+.upload-area:hover {
+    border-color: #4facfe;
+    background: #f0f8ff;
+}
+
+/* Preview grid */
+.preview-grid {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.preview-img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 2px solid #4facfe;
+}
+
+/* Fullscreen viewer */
+.photo-viewer {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    cursor: pointer;
+}
+
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* 🔐 Auth Pages */
+.auth-container {
+    text-align: center;
+    padding: 10px 0;
+}
+
+.auth-logo {
+    font-size: 52px;
+    margin-bottom: 10px;
+}
+
+.auth-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.auth-sub {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 20px;
+}
+
+.auth-switch {
+    font-size: 13px;
+    color: #777;
+    margin-top: 16px;
+}
+
+.auth-switch a {
+    color: #4facfe;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* 🔔 Notification Bell */
+.notif-btn {
+    position: absolute;
+    left: 15px;
+    top: 15px;
+    font-size: 18px;
+    text-decoration: none;
+    color: white;
+}
+
+.notif-badge {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    background: red;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 20px;
+    min-width: 16px;
+    text-align: center;
+}
+
+/* 🔔 Notification Cards */
+.notif-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    background: white;
+    border-radius: 14px;
+    margin-bottom: 8px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    border-left: 3px solid #eee;
+}
+
+.notif-card.unread {
+    border-left: 3px solid #4facfe;
+    background: #f0f8ff;
+}
+
+.notif-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.notif-body {
+    flex: 1;
+}
+
+.notif-msg {
+    font-size: 13px;
+    color: #333;
+    margin: 0 0 4px;
+    line-height: 1.4;
+}
+
+.notif-time {
+    font-size: 11px;
+    color: #aaa;
+}
+
+.notif-read-btn {
+    background: #4facfe;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* 👤 Profile Photo */
+.profile-img-placeholder {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: #f1f3f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    margin: 0 auto 10px;
+}
+
+/* Profile contact tags */
+.profile-contact-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.profile-tag {
+    background: #f1f3f6;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    color: #555;
+}
+
+/* Edit profile button */
+.edit-profile-btn {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 7px 18px;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    border-radius: 20px;
+    font-size: 13px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* ✏️ Edit Profile Photo Box */
+.photo-edit-box {
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.photo-preview {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #4facfe;
+    margin: 0 auto;
+    display: block;
+}
+
+.photo-placeholder {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: #f1f3f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    margin: 0 auto;
+    border: 3px dashed #ddd;
+}
+
+/* ⭐ Star Rating Selector */
+.star-select {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+.star-select input { display: none; }
+
+.star-select label {
+    font-size: 24px;
+    cursor: pointer;
+    opacity: 0.4;
+    transition: 0.1s;
+}
+
+.star-select input:checked ~ label,
+.star-select label:hover,
+.star-select label:hover ~ label {
+    opacity: 1;
+}
+
+/* ⭐ Review Cards */
+.review-card {
+    background: #f8f9fc;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+
+.review-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    flex-wrap: wrap;
+}
+
+.review-stars { font-size: 13px; }
+
+.review-role-tag {
+    background: #e8f4fd;
+    color: #0c5460;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.review-date {
+    font-size: 10px;
+    color: #aaa;
+    margin-left: auto;
+}
+
+.review-text {
+    font-size: 13px;
+    color: #555;
+    margin: 0;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+/* 👤 Driver Row in Ride Detail */
+.driver-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.driver-thumb {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid #4facfe;
+}
+
+.driver-thumb-placeholder {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #f1f3f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+/* 💰 Commission Card */
+.commission-card {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.commission-header {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 12px;
+    color: #333;
+}
+
+.commission-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+    color: #555;
+}
+
+.commission-row:last-child { border-bottom: none; }
+
+.commission-row.deducted { color: #dc3545; }
+
+.commission-row.payout {
+    font-weight: 700;
+    font-size: 15px;
+    color: #333;
+}
+
+.payout-amount {
+    color: #28a745;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* ⏱️ Countdown Bar on ride detail */
+.countdown-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-weight: 500;
+    font-size: 14px;
+    color: #856404;
+}
+
+.countdown-icon { font-size: 20px; }
+.countdown-text { flex: 1; }
+
+/* 🏷️ Smart Status Badges on ride detail header */
+.smart-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.smart-badge.active   { background: #d4edda; color: #155724; }
+.smart-badge.done     { background: #e2e3e5; color: #383d41; }
+.smart-badge.upcoming { background: #fff3cd; color: #856404; }
+
+/* 🚫 Smart Block Message */
+.smart-block-msg {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #f8f9fc;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+    border-left: 4px solid #dee2e6;
+}
+
+.smart-block-icon { font-size: 28px; flex-shrink: 0; }
+
+/* ⏱️ Countdown inline on profile upcoming rides */
+.countdown-inline {
+    font-size: 11px;
+    color: #856404;
+    background: #fff8e1;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* 🏷️ Home ride status tags */
+.home-ride-status {
+    font-size: 11px;
+    font-weight: 500;
+    margin: 4px 0;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.active-status   { background: #d4edda; color: #155724; }
+.upcoming-status { background: #fff3cd; color: #856404; }
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* ══════════════════════════════════
+   💬 INBOX
+══════════════════════════════════ */
+
+.inbox-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.inbox-count {
+    font-size: 12px;
+    color: #aaa;
+    background: #f1f3f6;
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+
+.chat-list { display: flex; flex-direction: column; gap: 2px; }
+
+.chat-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 10px;
+    text-decoration: none;
+    color: #333;
+    border-radius: 14px;
+    transition: background 0.15s;
+}
+
+.chat-item:active { background: #f5f7fa; }
+
+.chat-avatar-box {
+    flex-shrink: 0;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-avatar-inner {
+    color: white;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.chat-info { flex: 1; min-width: 0; }
+
+.chat-item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.chat-item-top strong { font-size: 14px; }
+
+.chat-time { font-size: 11px; color: #aaa; flex-shrink: 0; }
+
+.chat-ride-badge {
+    display: inline-block;
+    font-size: 10px;
+    background: #e8f4fd;
+    color: #0c5460;
+    padding: 2px 7px;
+    border-radius: 8px;
+    margin-bottom: 3px;
+}
+
+.chat-preview {
+    font-size: 12px;
+    color: #888;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Empty state */
+.inbox-empty-state {
+    text-align: center;
+    padding: 50px 20px 30px;
+    color: #888;
+}
+
+.inbox-empty-icon { font-size: 56px; margin-bottom: 12px; }
+
+.inbox-empty-state h6 { font-size: 16px; color: #333; margin-bottom: 6px; }
+.inbox-empty-state p  { font-size: 13px; line-height: 1.5; }
+
+.inbox-cta-btn {
+    flex: 1;
+    display: block;
+    text-align: center;
+    padding: 10px;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.inbox-cta-btn.secondary {
+    background: #f1f3f6;
+    color: #333;
+}
+
+
+/* ══════════════════════════════════
+   💬 CHAT PAGE
+══════════════════════════════════ */
+
+/* Header */
+.chat-header-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0 12px;
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 0;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 10;
+}
+
+.chat-back-btn {
+    font-size: 22px;
+    text-decoration: none;
+    color: #333;
+    padding: 4px 8px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.chat-header-avatar-box {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.chat-header-initials {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.chat-online-dot {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 10px;
+    height: 10px;
+    background: #28a745;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+.chat-header-info { flex: 1; }
+.chat-header-name { font-weight: 600; font-size: 15px; line-height: 1.2; }
+.chat-header-sub  { font-size: 11px; color: #aaa; }
+
+/* Ride context banner */
+.ride-context-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #e8f4fd;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin: 10px 0;
+    text-decoration: none;
+    color: #0c5460;
+    font-size: 13px;
+}
+
+.ride-context-route { font-weight: 600; font-size: 13px; }
+.ride-context-meta  { font-size: 11px; color: #5a8d99; margin-top: 2px; }
+
+/* Messages box */
+.chat-messages-box {
+    height: calc(100vh - 280px);
+    overflow-y: auto;
+    padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    scroll-behavior: smooth;
+}
+
+/* Message wrapper */
+.chat-msg-wrapper {
+    display: flex;
+    align-items: flex-end;
+    gap: 7px;
+}
+
+.chat-msg-wrapper.right { flex-direction: row-reverse; }
+.chat-msg-wrapper.left  { flex-direction: row; }
+
+/* Avatar in chat */
+.chat-msg-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* Bubble wrap */
+.chat-bubble-wrap {
+    max-width: 72%;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-msg-wrapper.right .chat-bubble-wrap { align-items: flex-end; }
+.chat-msg-wrapper.left  .chat-bubble-wrap { align-items: flex-start; }
+
+/* Bubble */
+.chat-bubble-msg {
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 14px;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.chat-bubble-msg.sent {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-bubble-msg.received {
+    background: #f1f3f6;
+    color: #333;
+    border-bottom-left-radius: 4px;
+}
+
+.chat-msg-time {
+    font-size: 10px;
+    color: #bbb;
+    margin-top: 3px;
+    padding: 0 4px;
+}
+
+/* No messages state */
+.chat-no-msgs {
+    text-align: center;
+    margin-top: 60px;
+    color: #888;
+    padding: 20px;
+}
+
+.chat-no-msgs p { font-size: 14px; margin-top: 8px; }
+
+/* Quick replies */
+.quick-replies {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 0;
+    margin-bottom: 4px;
+}
+
+.quick-reply-btn {
+    background: #f1f3f6;
+    border: none;
+    border-radius: 20px;
+    padding: 7px 12px;
+    font-size: 12px;
+    color: #333;
+    cursor: pointer;
+    transition: 0.15s;
+}
+
+.quick-reply-btn:active { background: #e2e6ea; }
+
+/* Input area */
+.chat-input-area {
+    position: sticky;
+    bottom: 65px;
+    background: white;
+    padding: 10px 0 4px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.chat-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.chat-input-row input {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 24px;
+    border: 1.5px solid #e0e4ea;
+    outline: none;
+    font-size: 14px;
+    font-family: inherit;
+    background: #f8f9fc;
+    transition: 0.2s;
+}
+
+.chat-input-row input:focus {
+    border-color: #4facfe;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(79,172,254,0.12);
+}
+
+.chat-send-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    font-size: 17px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(79,172,254,0.35);
+    transition: all 0.2s;
+}
+
+.chat-send-btn:active {
+    transform: scale(0.92);
+    box-shadow: none;
+}
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* ══════════════════════════
+   📜 LEGAL PAGE
+══════════════════════════ */
+
+/* Tab switcher */
+.legal-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    background: #f1f3f6;
+    padding: 4px;
+    border-radius: 14px;
+}
+
+.legal-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 600;
+    color: #888;
+    cursor: pointer;
+    transition: 0.2s;
+    font-family: inherit;
+}
+
+.legal-tab.active {
+    background: white;
+    color: #333;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Hero banner */
+.legal-hero {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    border-radius: 18px;
+    padding: 24px 20px;
+    text-align: center;
+    color: white;
+    margin-bottom: 16px;
+}
+
+.legal-hero-icon  { font-size: 40px; margin-bottom: 8px; }
+.legal-hero-title { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+.legal-hero-sub   { font-size: 12px; opacity: 0.85; margin: 0; }
+
+/* Card container */
+.legal-card {
+    background: white;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    margin-bottom: 16px;
+}
+
+/* Each item */
+.legal-item {
+    display: flex;
+    gap: 14px;
+    padding: 16px;
+    border-bottom: 1px solid #f5f5f5;
+    align-items: flex-start;
+}
+
+/* Number badge */
+.legal-num {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    min-width: 28px;
+    text-align: center;
+    margin-top: 2px;
+}
+
+.legal-num.green {
+    background: linear-gradient(135deg, #43e97b, #38f9d7);
+    color: #1a5c3a;
+}
+
+.legal-heading {
+    font-weight: 600;
+    font-size: 14px;
+    color: #222;
+    margin-bottom: 6px;
+}
+
+.legal-sub-heading {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 4px;
+}
+
+.legal-text {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.legal-list {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.8;
+    padding-left: 18px;
+    margin: 0;
+}
+
+/* Highlight box */
+.legal-highlight {
+    background: #fff3cd;
+    color: #856404;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 12px;
+    border-radius: 10px;
+    margin-top: 8px;
+    display: inline-block;
+}
+
+.legal-highlight.green-highlight {
+    background: #d4edda;
+    color: #155724;
+}
+
+/* Contact button */
+.legal-contact-btn {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 8px 16px;
+    background: #f1f3f6;
+    color: #333;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+/* ══════════════════════════
+   🔻 APP FOOTER
+══════════════════════════ */
+
+.app-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    font-size: 11px;
+    color: #aaa;
+    border-top: 1px solid #f0f0f0;
+}
+
+.app-footer a {
+    color: #4facfe;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* Legal footer line */
+.legal-footer {
+    text-align: center;
+    font-size: 11px;
+    color: #bbb;
+    padding: 16px 0 8px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+/* Profile legal row */
+.profile-legal-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 0 4px;
+    font-size: 12px;
+    color: #aaa;
+}
+
+.profile-legal-row a {
+    color: #4facfe;
+    text-decoration: none;
+    font-weight: 500;
+}

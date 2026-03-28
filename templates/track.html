@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+{% if ride %}
+
+<!-- 🚗 HEADER CARD -->
+<div class="track-header">
+    <div class="track-route">
+        📍 {{ ride.from_loc }} → {{ ride.to_loc }}
+    </div>
+    <div class="track-status" id="trackStatus">
+        🟡 Getting location...
+    </div>
+</div>
+
+
+<!-- 🗺️ LIVE MAP -->
+<div class="map-container">
+    <iframe
+        id="liveMap"
+        width="100%"
+        height="320"
+        style="border-radius: 16px; border: none;"
+        loading="lazy"
+        allowfullscreen
+        src="https://www.google.com/maps?q={{ ride.from_loc }}&output=embed">
+    </iframe>
+
+    <!-- 🔄 Refresh Overlay -->
+    <div class="map-refresh-badge" id="refreshBadge">
+        🔄 Updating...
+    </div>
+</div>
+
+
+<!-- 📊 LIVE INFO CARDS -->
+<div class="live-info-row">
+
+    <div class="live-info-card">
+        <div class="live-icon">📍</div>
+        <div class="live-label">Latitude</div>
+        <div class="live-value" id="latVal">--</div>
+    </div>
+
+    <div class="live-info-card">
+        <div class="live-icon">📍</div>
+        <div class="live-label">Longitude</div>
+        <div class="live-value" id="lonVal">--</div>
+    </div>
+
+    <div class="live-info-card">
+        <div class="live-icon">⏱️</div>
+        <div class="live-label">Updated</div>
+        <div class="live-value" id="lastUpdate">--</div>
+    </div>
+
+</div>
+
+
+<!-- 🚗 RIDE INFO -->
+<div class="info-card">
+    <div class="info-row">
+        <span>📅 Date</span>
+        <span>{{ ride.date }}</span>
+    </div>
+    <div class="info-row">
+        <span>⏰ Time</span>
+        <span>{{ ride.time }}</span>
+    </div>
+    <div class="info-row">
+        <span>💺 Seats Left</span>
+        <span>{{ ride.seats }}</span>
+    </div>
+    <div class="info-row">
+        <span>🚦 Status</span>
+        <span class="status-badge {{ ride.status }}">{{ ride.status }}</span>
+    </div>
+</div>
+
+
+<!-- 📤 SHARE LIVE LOCATION -->
+<div class="share-section">
+
+    <button class="share-live-btn" onclick="shareLiveLocation()">
+        📤 Share Live Location on WhatsApp
+    </button>
+
+    <a href="/ride/{{ ride.id }}" class="back-btn">
+        ← Back to Ride
+    </a>
+
+</div>
+
+
+{% else %}
+
+<div class="empty-box">
+    <p>Ride not found 🚫</p>
+</div>
+
+{% endif %}
+
+
+<!-- 🔧 LIVE TRACKING SCRIPT -->
+<script>
+
+    let currentLat = null;
+    let currentLon = null;
+    const rideFrom = "{{ ride.from_loc if ride else '' }}";
+    const rideTo   = "{{ ride.to_loc if ride else '' }}";
+
+    // 📍 Get location and update map
+    function updateLocation() {
+
+        let badge = document.getElementById('refreshBadge');
+        if (badge) {
+            badge.style.display = 'block';
+        }
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+
+                function(position) {
+                    currentLat = position.coords.latitude;
+                    currentLon = position.coords.longitude;
+
+                    // Update info cards
+                    document.getElementById('latVal').textContent =
+                        currentLat.toFixed(5);
+                    document.getElementById('lonVal').textContent =
+                        currentLon.toFixed(5);
+
+                    // Update time
+                    let now = new Date();
+                    document.getElementById('lastUpdate').textContent =
+                        now.getHours().toString().padStart(2,'0') + ':' +
+                        now.getMinutes().toString().padStart(2,'0') + ':' +
+                        now.getSeconds().toString().padStart(2,'0');
+
+                    // Update map
+                    let mapSrc =
+                        `https://www.google.com/maps?q=${currentLat},${currentLon}&output=embed&z=15`;
+                    document.getElementById('liveMap').src = mapSrc;
+
+                    // Update status
+                    document.getElementById('trackStatus').innerHTML =
+                        '🟢 Live — Tracking Active';
+                    document.getElementById('trackStatus').style.color = '#28a745';
+
+                    if (badge) badge.style.display = 'none';
+                },
+
+                function(error) {
+                    document.getElementById('trackStatus').innerHTML =
+                        '🔴 Location access denied';
+                    document.getElementById('trackStatus').style.color = '#dc3545';
+                    if (badge) badge.style.display = 'none';
+                }
+            );
+        } else {
+            document.getElementById('trackStatus').innerHTML =
+                '🔴 GPS not supported';
+        }
+    }
+
+    // 📤 Share live location on WhatsApp
+    function shareLiveLocation() {
+        if (currentLat && currentLon) {
+            let mapsLink = `https://maps.google.com/?q=${currentLat},${currentLon}`;
+            let msg = `📍 Live Location Update!\nI am on a ride from ${rideFrom} to ${rideTo}.\n\nTrack me here:\n${mapsLink}`;
+            window.open("https://wa.me/?text=" + encodeURIComponent(msg));
+        } else {
+            alert("Getting your location... Please wait a moment and try again.");
+        }
+    }
+
+    // ▶️ Start tracking immediately, then every 10 seconds
+    updateLocation();
+    setInterval(updateLocation, 10000);
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+{% if ride %}
+
+<!-- 🚗 Route -->
+<div class="ride-detail-card">
+    <div class="route-big">{{ ride.from_loc }} → {{ ride.to_loc }}</div>
+    <!-- Smart Status Badge -->
+    <div style="margin-top:8px">
+        {% if ride.smart_status == 'started' %}
+            <span class="smart-badge active">🟢 In Progress</span>
+        {% elif ride.smart_status == 'completed' %}
+            <span class="smart-badge done">✅ Completed</span>
+        {% else %}
+            <span class="smart-badge upcoming">⏳ Upcoming</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ⏱️ COUNTDOWN TIMER -->
+{% if ride.countdown %}
+<div class="countdown-bar">
+    <span class="countdown-icon">
+        {% if ride.smart_status == 'started' %}🚗
+        {% elif ride.smart_status == 'completed' %}✅
+        {% else %}⏱️{% endif %}
+    </span>
+    <span class="countdown-text">{{ ride.countdown }}</span>
+</div>
+{% endif %}
+
+<!-- 📄 Ride Info -->
+<div class="info-card">
+    <div class="info-row"><span>📅 Date</span><span>{{ ride.date }}</span></div>
+    <div class="info-row"><span>⏰ Time</span><span>{{ ride.time }}</span></div>
+    <div class="info-row"><span>💺 Seats Left</span><span>{{ ride.seats }}</span></div>
+    <div class="info-row"><span>💰 Price</span><span class="price">₹ {{ ride.price }}</span></div>
+</div>
+
+<!-- 📍 MAP -->
+<div class="card-box">
+    <h6>Route Map</h6>
+    <iframe width="100%" height="200" style="border-radius:12px" loading="lazy" allowfullscreen
+        src="https://www.google.com/maps?q={{ ride.from_loc }} to {{ ride.to_loc }}&output=embed"></iframe>
+</div>
+
+<!-- 👤 DRIVER INFO -->
+{% if driver %}
+<div class="info-card">
+    <h6>👤 Driver</h6>
+    <div class="driver-row">
+        {% set dphoto = driver.photo or '' %}
+        {% if dphoto %}
+        <img src="{{ dphoto }}" class="driver-thumb"
+            onerror="this.outerHTML='<div class=driver-thumb-placeholder>👤</div>'">
+        {% else %}
+        <div class="driver-thumb-placeholder">👤</div>
+        {% endif %}
+        <div>
+            <div style="font-weight:600">{{ driver.name }}</div>
+            {% set drating = driver.avg_rating or 0 %}
+            {% if drating > 0 %}
+            <div style="font-size:13px; color:#888">
+                ⭐ {{ drating }} · {{ driver.total_ratings }} review{{ 's' if driver.total_ratings != 1 else '' }}
+            </div>
+            {% else %}
+            <div style="font-size:12px; color:#aaa">No ratings yet</div>
+            {% endif %}
+            {% if driver.bio %}<div style="font-size:12px; color:#777; margin-top:3px">{{ driver.bio }}</div>{% endif %}
+        </div>
+    </div>
+    {% if driver_reviews %}
+    <div style="margin-top:10px">
+        {% for r in driver_reviews[:2] %}
+        <div class="review-card">
+            <div class="review-top">
+                <div class="review-stars">{% for i in range(r.stars | int) %}⭐{% endfor %}</div>
+                <span class="review-date">{{ r.created_at }}</span>
+            </div>
+            {% if r.review_text %}<p class="review-text">"{{ r.review_text }}"</p>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ⚙️ Ride Preferences -->
+<div class="info-card">
+    <h6>Ride Preferences</h6>
+    <div class="info-row"><span>🎵 Music</span><span>{{ ride.music }}</span></div>
+    <div class="info-row"><span>🚬 Smoking</span><span>{{ ride.smoking }}</span></div>
+    <div class="info-row"><span>🧳 Luggage</span><span>{{ ride.luggage }}</span></div>
+    <div class="info-row"><span>🚻 Stops</span><span>{{ ride.stops }}</span></div>
+</div>
+
+<!-- 🧠 Smart Features -->
+<div class="info-card">
+    <h6>Smart Features</h6>
+    <div class="info-row"><span>👤 Gender</span><span>{{ ride.gender }}</span></div>
+    <div class="info-row"><span>❄️ AC</span><span>{{ ride.ac }}</span></div>
+    <div class="info-row"><span>🐶 Pets</span><span>{{ ride.pets }}</span></div>
+    <div class="info-row"><span>🔌 Charging</span><span>{{ ride.charging }}</span></div>
+</div>
+
+<!-- ✍️ LEAVE A REVIEW -->
+{% if can_review %}
+<div class="info-card">
+    <h6>⭐ Leave a Review</h6>
+    <form method="POST" action="/review/{{ ride.id }}">
+        <input type="hidden" name="reviewee_email" value="{{ driver.email if driver else '' }}">
+        <input type="hidden" name="reviewer_role" value="passenger">
+        <div class="star-select">
+            {% for i in [5,4,3,2,1] %}
+            <input type="radio" name="stars" value="{{ i }}" id="star{{ i }}" required>
+            <label for="star{{ i }}">⭐</label>
+            {% endfor %}
+        </div>
+        <div class="input-group-custom" style="margin-top:10px">
+            <textarea name="review_text" placeholder="Share your experience..."
+                style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd;
+                font-family:inherit; font-size:13px; resize:none; height:80px"></textarea>
+        </div>
+        <button class="submit-btn">📤 Submit Review</button>
+    </form>
+</div>
+{% endif %}
+
+<!-- 🚀 BOOKING SECTION -->
+<div class="bottom-action">
+
+    {% if booked %}
+        <div class="success-msg" style="margin-bottom:10px">✅ Seat Booked Successfully!</div>
+        <button class="book-btn"
+            onclick="document.getElementById('receiptModal').style.display='flex'"
+            style="background:linear-gradient(135deg,#4facfe,#00f2fe); margin-bottom:8px">
+            🎟 View Receipt
+        </button>
+        <a href="https://wa.me/?text=🎟 Booking Confirmed!%0AID: %23TRP{{ booking_id }}%0AFrom: {{ ride.from_loc }}%0ATo: {{ ride.to_loc }}%0ADate: {{ ride.date }} at {{ ride.time }}%0AAmount: ₹{{ ride.price }}%0ABooked via Tripzy 🚗"
+            target="_blank" class="share-btn">📤 Share Receipt on WhatsApp</a>
+
+    {% elif error %}
+        <!-- Smart error — blocked booking -->
+        <div class="smart-block-msg">
+            <div class="smart-block-icon">
+                {% if 'started' in error %}🚗
+                {% elif 'completed' in error %}✅
+                {% else %}❌{% endif %}
+            </div>
+            <div>
+                <div style="font-weight:600; font-size:14px">Can't Book This Ride</div>
+                <div style="font-size:13px; color:#888; margin-top:3px">{{ error }}</div>
+            </div>
+        </div>
+
+    {% elif ride.smart_status == 'completed' %}
+        <div class="smart-block-msg">
+            <div class="smart-block-icon">✅</div>
+            <div>
+                <div style="font-weight:600; font-size:14px">Ride Completed</div>
+                <div style="font-size:13px; color:#888; margin-top:3px">This ride has already ended</div>
+            </div>
+        </div>
+
+    {% elif ride.smart_status == 'started' %}
+        <div class="smart-block-msg">
+            <div class="smart-block-icon">🚗</div>
+            <div>
+                <div style="font-weight:600; font-size:14px">Ride In Progress</div>
+                <div style="font-size:13px; color:#888; margin-top:3px">Booking is no longer available</div>
+            </div>
+        </div>
+
+    {% else %}
+        <div style="display:flex; gap:8px; margin-bottom:8px">
+            <form method="POST" style="flex:2">
+                <button class="book-btn" style="width:100%">Book Seat</button>
+            </form>
+            <a href="/chat/Driver_{{ ride.id }}?ride_id={{ ride.id }}" class="msg-driver-btn">💬 Message</a>
+        </div>
+        <a href="https://wa.me/?text=Ride from {{ ride.from_loc }} to {{ ride.to_loc }} on {{ ride.date }} at {{ ride.time }}. Price ₹{{ ride.price }}"
+            target="_blank" class="share-btn">📤 Share on WhatsApp</a>
+    {% endif %}
+
+</div>
+
+<!-- 🎟 RECEIPT MODAL -->
+{% if booked %}
+<div class="modal-overlay" id="receiptModal" style="display:flex"
+    onclick="if(event.target===this) this.style.display='none'">
+    <div class="receipt-modal-card">
+        <div class="receipt-header">
+            <div class="receipt-check">✅</div>
+            <div class="receipt-title">Booking Confirmed!</div>
+            <div class="receipt-subtitle">Your seat has been reserved</div>
+        </div>
+        <div class="receipt-divider"><div class="receipt-dot left"></div><div class="receipt-line"></div><div class="receipt-dot right"></div></div>
+        <div class="receipt-body">
+            <div class="receipt-row"><span class="receipt-label">🎟 Booking ID</span><span class="receipt-value">#TRP{{ booking_id }}</span></div>
+            <div class="receipt-row"><span class="receipt-label">📍 From</span><span class="receipt-value">{{ ride.from_loc }}</span></div>
+            <div class="receipt-row"><span class="receipt-label">📍 To</span><span class="receipt-value">{{ ride.to_loc }}</span></div>
+            <div class="receipt-row"><span class="receipt-label">📅 Date</span><span class="receipt-value">{{ ride.date }}</span></div>
+            <div class="receipt-row"><span class="receipt-label">⏰ Time</span><span class="receipt-value">{{ ride.time }}</span></div>
+            <div class="receipt-row"><span class="receipt-label">🕐 Booked At</span><span class="receipt-value">{{ booked_at }}</span></div>
+        </div>
+        <div class="receipt-divider"><div class="receipt-dot left"></div><div class="receipt-line"></div><div class="receipt-dot right"></div></div>
+        <div class="receipt-price-row"><span>Amount</span><span class="receipt-price">₹{{ ride.price }}</span></div>
+        <div style="padding:0 16px 16px; display:flex; flex-direction:column; gap:8px">
+            <a href="https://wa.me/?text=🎟 Booking Confirmed!%0AID: %23TRP{{ booking_id }}%0AFrom: {{ ride.from_loc }}%0ATo: {{ ride.to_loc }}%0ADate: {{ ride.date }} at {{ ride.time }}%0AAmount: ₹{{ ride.price }}%0ABooked via Tripzy 🚗"
+                target="_blank" class="receipt-share-btn">📤 Share on WhatsApp</a>
+            <button onclick="document.getElementById('receiptModal').style.display='none'"
+                style="width:100%; padding:10px; border:none; background:#f1f3f6; border-radius:10px; font-size:13px; cursor:pointer">
+                ✕ Close
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-box"><p>Ride not found 🚫</p></div>
+{% endif %}
+
+{% endblock %}

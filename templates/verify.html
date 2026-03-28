@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="form-card">
+
+    <h5 class="section-title">✅ Driver Verification</h5>
+    <p style="font-size:13px; color:#777; margin-bottom:20px;">
+        Upload your documents to get a Verified Driver badge on your profile.
+    </p>
+
+    <form method="POST" enctype="multipart/form-data">
+
+        <!-- Aadhar Card -->
+        <div class="doc-upload-card">
+            <div class="doc-upload-left">
+                <div class="doc-upload-icon">🪪</div>
+                <div>
+                    <div class="doc-upload-title">Aadhar Card</div>
+                    <div class="doc-upload-sub">Government ID proof</div>
+                </div>
+            </div>
+            <div class="doc-upload-right">
+                {% if verify and verify.aadhar == 'uploaded' %}
+                    <span class="badge-verified">✅ Uploaded</span>
+                {% else %}
+                    <label class="upload-label" for="aadhar">
+                        📤 Upload
+                        <input type="checkbox" name="aadhar" id="aadhar"
+                            style="display:none" onchange="markUploaded(this, 'aadharStatus')">
+                    </label>
+                    <span class="upload-status" id="aadharStatus"></span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Driving License -->
+        <div class="doc-upload-card">
+            <div class="doc-upload-left">
+                <div class="doc-upload-icon">🪪</div>
+                <div>
+                    <div class="doc-upload-title">Driving License</div>
+                    <div class="doc-upload-sub">Valid DL required</div>
+                </div>
+            </div>
+            <div class="doc-upload-right">
+                {% if verify and verify.license == 'uploaded' %}
+                    <span class="badge-verified">✅ Uploaded</span>
+                {% else %}
+                    <label class="upload-label" for="license">
+                        📤 Upload
+                        <input type="checkbox" name="license" id="license"
+                            style="display:none" onchange="markUploaded(this, 'licenseStatus')">
+                    </label>
+                    <span class="upload-status" id="licenseStatus"></span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- RC Book -->
+        <div class="doc-upload-card">
+            <div class="doc-upload-left">
+                <div class="doc-upload-icon">🚗</div>
+                <div>
+                    <div class="doc-upload-title">RC Book</div>
+                    <div class="doc-upload-sub">Vehicle registration</div>
+                </div>
+            </div>
+            <div class="doc-upload-right">
+                {% if verify and verify.rc == 'uploaded' %}
+                    <span class="badge-verified">✅ Uploaded</span>
+                {% else %}
+                    <label class="upload-label" for="rc">
+                        📤 Upload
+                        <input type="checkbox" name="rc" id="rc"
+                            style="display:none" onchange="markUploaded(this, 'rcStatus')">
+                    </label>
+                    <span class="upload-status" id="rcStatus"></span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Insurance -->
+        <div class="doc-upload-card">
+            <div class="doc-upload-left">
+                <div class="doc-upload-icon">📋</div>
+                <div>
+                    <div class="doc-upload-title">Insurance</div>
+                    <div class="doc-upload-sub">Vehicle insurance copy</div>
+                </div>
+            </div>
+            <div class="doc-upload-right">
+                {% if verify and verify.insurance == 'uploaded' %}
+                    <span class="badge-verified">✅ Uploaded</span>
+                {% else %}
+                    <label class="upload-label" for="insurance">
+                        📤 Upload
+                        <input type="checkbox" name="insurance" id="insurance"
+                            style="display:none" onchange="markUploaded(this, 'insuranceStatus')">
+                    </label>
+                    <span class="upload-status" id="insuranceStatus"></span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+            📌 After uploading all 4 documents, you will receive a
+            <strong>✅ Verified Driver</strong> badge on your profile.
+        </div>
+
+        <button class="submit-btn mt-3">✅ Submit for Verification</button>
+
+    </form>
+
+    <a href="/profile" class="back-link">← Back to Profile</a>
+
+</div>
+
+<script>
+    function markUploaded(checkbox, statusId) {
+        let status = document.getElementById(statusId);
+        if (checkbox.checked) {
+            status.textContent = '✅ Ready';
+            status.style.color = '#28a745';
+            status.style.fontSize = '12px';
+        } else {
+            status.textContent = '';
+        }
+    }
+</script>
+
+{% endblock %}

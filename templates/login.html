@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="auth-container">
+
+    <div class="auth-logo">🚗</div>
+    <h4 class="auth-title">Welcome Back</h4>
+    <p class="auth-sub">Sign in to your Tripzy account</p>
+
+    {% if error %}
+    <div class="error-msg" style="margin-bottom:14px">❌ {{ error }}</div>
+    {% endif %}
+
+    <div class="form-card">
+        <form method="POST">
+
+            <div class="input-group-custom">
+                <label>📧 Email</label>
+                <input type="email" name="email" placeholder="you@email.com" required>
+            </div>
+
+            <div class="input-group-custom">
+                <label>🔒 Password</label>
+                <input type="password" name="password" placeholder="Your password" required>
+            </div>
+
+            <button class="submit-btn mt-2">🔑 Login</button>
+
+        </form>
+    </div>
+
+    <p class="auth-switch">
+        Don't have an account?
+        <a href="/register">Register here</a>
+    </p>
+
+</div>
+
+{% endblock %}

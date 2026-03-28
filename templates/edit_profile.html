@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h5 class="section-title">✏️ Edit Profile</h5>
+
+<div class="form-card">
+    <form method="POST" enctype="multipart/form-data">
+
+        <!-- 📸 Profile Photo Preview -->
+        <div class="photo-edit-box">
+            {% set photo = user.get('photo') or '' %}
+            {% if photo %}
+                <img src="{{ photo }}" class="photo-preview" id="photoPreview"
+                    onerror="this.outerHTML='<div class=photo-placeholder id=photoPreview>👤</div>'">
+            {% else %}
+                <div class="photo-placeholder" id="photoPreview">👤</div>
+            {% endif %}
+            <p style="font-size:12px; color:#888; margin-top:8px">Your profile photo</p>
+        </div>
+
+        <!-- Upload from device -->
+        <div class="input-group-custom">
+            <label>📷 Upload Photo from Device</label>
+            <div class="upload-area" onclick="document.getElementById('photoFile').click()">
+                <p style="font-size:13px; color:#888; margin:0">Tap to select image</p>
+            </div>
+            <input type="file" id="photoFile" name="photo_file" accept="image/*"
+                style="display:none" onchange="previewPhoto(this)">
+        </div>
+
+        <!-- Or paste URL -->
+        <div class="input-group-custom">
+            <label>🔗 Or Paste Photo URL</label>
+            {% set photo_url = user.get('photo') or '' %}
+            <input type="url" name="photo_url"
+                placeholder="https://example.com/photo.jpg"
+                value="{{ photo_url if photo_url.startswith('http') else '' }}"
+                oninput="previewUrl(this.value)">
+        </div>
+
+        <div class="input-group-custom">
+            <label>👤 Full Name</label>
+            <input type="text" name="name" required
+                value="{{ user.get('name') or '' }}"
+                placeholder="Your full name">
+        </div>
+
+        <div class="input-group-custom">
+            <label>📞 Phone Number</label>
+            <input type="tel" name="phone" maxlength="10"
+                value="{{ user.get('phone') or '' }}"
+                placeholder="10-digit number">
+        </div>
+
+        <div class="input-group-custom">
+            <label>📝 Bio</label>
+            <input type="text" name="bio"
+                value="{{ user.get('bio') or '' }}"
+                placeholder="e.g. Safe driver, love music 🎵">
+        </div>
+
+        <button class="submit-btn mt-3">💾 Save Profile</button>
+
+    </form>
+</div>
+
+<a href="/profile" class="back-link">← Back to Profile</a>
+
+<script>
+function previewPhoto(input) {
+    let file = input.files[0];
+    if (!file) return;
+    let reader = new FileReader();
+    reader.onload = function(e) { updatePreview(e.target.result); };
+    reader.readAsDataURL(file);
+}
+
+function previewUrl(url) {
+    if (url && url.startsWith('http')) updatePreview(url);
+}
+
+function updatePreview(src) {
+    let el = document.getElementById('photoPreview');
+    if (el) el.outerHTML = `<img src="${src}" class="photo-preview" id="photoPreview"
+        onerror="this.outerHTML='<div class=photo-placeholder id=photoPreview>👤</div>'">`;
+}
+</script>
+
+{% endblock %}

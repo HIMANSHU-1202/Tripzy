@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- 🔝 HEADER -->
+<div class="results-header">
+    <h5>Available Rides</h5>
+    <button class="filter-btn" onclick="toggleFilters()">⚙️ Filters</button>
+</div>
+
+<!-- 🎛 FILTER PANEL -->
+<div id="filterPanel" class="filter-panel">
+    <form method="POST" action="/results">
+        <input type="hidden" name="from" value="{{ request.form.get('from','') }}">
+        <input type="hidden" name="to" value="{{ request.form.get('to','') }}">
+
+        <h6>Filters</h6>
+
+        <div class="chips">
+            <input type="radio" name="ac" value="Yes" id="ac1">
+            <label for="ac1">❄️ AC</label>
+            <input type="radio" name="ac" value="No" id="ac2">
+            <label for="ac2">No AC</label>
+        </div>
+
+        <div class="chips">
+            <input type="radio" name="smoking" value="Allowed" id="s1">
+            <label for="s1">🚬 Allowed</label>
+            <input type="radio" name="smoking" value="Not Allowed" id="s2">
+            <label for="s2">No Smoking</label>
+        </div>
+
+        <div class="chips">
+            <input type="radio" name="pets" value="Allowed" id="p1">
+            <label for="p1">🐶 Pets</label>
+            <input type="radio" name="pets" value="Not Allowed" id="p2">
+            <label for="p2">No Pets</label>
+        </div>
+
+        <div class="chips">
+            <input type="radio" name="charging" value="Available" id="c1">
+            <label for="c1">🔌 Charging</label>
+            <input type="radio" name="charging" value="Not Available" id="c2">
+            <label for="c2">No Charging</label>
+        </div>
+
+        <h6 class="mt-2">Sort</h6>
+        <div class="chips">
+            <input type="radio" name="sort" value="price" id="sp">
+            <label for="sp">💰 Price</label>
+            <input type="radio" name="sort" value="seats" id="ss">
+            <label for="ss">💺 Seats</label>
+            <input type="radio" name="sort" value="time" id="st">
+            <label for="st">⏰ Time</label>
+        </div>
+
+        <button class="apply-btn">Apply</button>
+    </form>
+</div>
+
+<!-- 🚗 RIDE LIST -->
+<div class="ride-list">
+
+    {% if rides %}
+        {% for ride in rides %}
+        <div class="ride-card">
+
+            <!-- Clickable ride info -->
+            <a href="/ride/{{ ride.id }}" style="text-decoration:none; color:inherit; display:block">
+                <div class="route">
+                    <span>{{ ride.from_loc }}</span>
+                    <span>→</span>
+                    <span>{{ ride.to_loc }}</span>
+                </div>
+                <div class="ride-info">{{ ride.date }} | {{ ride.time }}</div>
+                <div class="ride-bottom">
+                    <span class="price">₹{{ ride.price }}</span>
+                    <span>{{ ride.seats }} seats</span>
+                </div>
+            </a>
+
+            <!-- 💬 Message Driver button -->
+            <div style="margin-top:8px; display:flex; gap:8px">
+                <a href="/ride/{{ ride.id }}" class="result-action-btn">
+                    🔍 View
+                </a>
+                <a href="/chat/Driver_{{ ride.id }}?ride_id={{ ride.id }}" class="result-action-btn msg">
+                    💬 Message
+                </a>
+            </div>
+
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="empty-text">No rides found 😔</p>
+    {% endif %}
+
+</div>
+
+<script>
+function toggleFilters() {
+    let panel = document.getElementById("filterPanel");
+    panel.classList.toggle("show");
+}
+</script>
+
+{% endblock %}

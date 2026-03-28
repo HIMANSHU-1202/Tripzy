@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- 👋 HEADER -->
+<div class="home-header">
+    <h4>Welcome 👋</h4>
+    <p>Your rides & activity</p>
+</div>
+
+<!-- ⚡ QUICK ACTIONS -->
+<div class="quick-actions">
+
+    <a href="/post" class="action-card">
+        <div>➕</div>
+        <p>Offer Ride</p>
+    </a>
+
+    <a href="/search" class="action-card">
+        <div>🔍</div>
+        <p>Find Ride</p>
+    </a>
+
+</div>
+
+
+<!-- 🚗 YOUR RIDES -->
+<div class="card-box">
+
+    <h6>Your Rides</h6>
+
+    {% if rides %}
+        {% for ride in rides %}
+        <a href="/ride/{{ ride.id }}" class="ride-card">
+
+            <div class="route">
+                <span>{{ ride.from_loc }}</span>
+                <span>→</span>
+                <span>{{ ride.to_loc }}</span>
+            </div>
+
+            <div class="ride-info">
+                {{ ride.date }} | {{ ride.time }}
+            </div>
+
+            <div class="ride-bottom">
+                <span class="price">₹{{ ride.price }}</span>
+                <span>{{ ride.seats }} seats</span>
+            </div>
+
+        </a>
+        {% endfor %}
+    {% else %}
+        <p class="empty-text">No rides yet 🚗</p>
+    {% endif %}
+
+</div>
+
+{% endblock %}

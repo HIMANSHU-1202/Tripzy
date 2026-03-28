@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="form-card">
+
+    <h5 class="section-title">Find a Ride</h5>
+
+    <form method="POST" action="/results">
+
+        <div class="input-group-custom">
+            <label>From</label>
+            <input type="text" name="from" required>
+        </div>
+
+        <div class="input-group-custom">
+            <label>To</label>
+            <input type="text" name="to" required>
+        </div>
+
+        <!-- 🔥 FILTERS -->
+        <h6 class="section-title mt-3">Filters</h6>
+
+        <div class="chip-group">
+
+            <label>❄️ AC</label>
+            <div class="chips">
+                <input type="radio" name="ac" value="Yes" id="fac1">
+                <label for="fac1">Yes</label>
+                <input type="radio" name="ac" value="No" id="fac2">
+                <label for="fac2">No</label>
+            </div>
+
+            <label>👤 Gender</label>
+            <div class="chips">
+                <input type="radio" name="gender" value="Male" id="fg1">
+                <label for="fg1">Male</label>
+                <input type="radio" name="gender" value="Female" id="fg2">
+                <label for="fg2">Female</label>
+                <input type="radio" name="gender" value="Any" id="fg3">
+                <label for="fg3">Any</label>
+            </div>
+
+            <label>🚬 Smoking</label>
+            <div class="chips">
+                <input type="radio" name="smoking" value="Allowed" id="fs1">
+                <label for="fs1">Allowed</label>
+                <input type="radio" name="smoking" value="Not Allowed" id="fs2">
+                <label for="fs2">Not Allowed</label>
+            </div>
+
+            <label>🐶 Pets</label>
+            <div class="chips">
+                <input type="radio" name="pets" value="Allowed" id="fp1">
+                <label for="fp1">Allowed</label>
+                <input type="radio" name="pets" value="Not Allowed" id="fp2">
+                <label for="fp2">Not Allowed</label>
+            </div>
+
+            <label>🔌 Charging</label>
+            <div class="chips">
+                <input type="radio" name="charging" value="Available" id="fc1">
+                <label for="fc1">Available</label>
+                <input type="radio" name="charging" value="Not Available" id="fc2">
+                <label for="fc2">Not Available</label>
+            </div>
+
+        </div>
+
+        <h6 class="section-title mt-3">Sort By</h6>
+        <div class="chips">
+            <input type="radio" name="sort" value="price" id="s1">
+            <label for="s1">💰 Price</label>
+            <input type="radio" name="sort" value="seats" id="s2">
+            <label for="s2">💺 Seats</label>
+            <input type="radio" name="sort" value="time" id="s3">
+            <label for="s3">⏰ Time</label>
+        </div>
+
+        <button class="submit-btn mt-3">🔍 Search Ride</button>
+
+    </form>
+
+</div>
+
+{% endblock %}

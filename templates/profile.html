@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- 👤 PROFILE HEADER -->
+<div class="profile-header">
+
+    <!-- Photo -->
+    {% if user.photo %}
+        <img src="{{ user.photo }}" class="profile-img"
+            onerror="this.outerHTML='<div class=profile-img-placeholder>👤</div>'">
+    {% else %}
+        <div class="profile-img-placeholder">👤</div>
+    {% endif %}
+
+    <h4>{{ user.name }}</h4>
+
+    <!-- Rating -->
+    {% set avg = user.avg_rating | float %}
+    {% set total = user.total_ratings | int %}
+    {% if avg > 0 %}
+    <p class="rating">
+        {% for i in range(avg | int) %}⭐{% endfor %}
+        <strong>{{ avg }}</strong> / 5 &nbsp;·&nbsp; {{ total }} review{{ 's' if total != 1 else '' }}
+    </p>
+    {% else %}
+    <p class="rating" style="color:#aaa; font-size:13px">⭐ No ratings yet</p>
+    {% endif %}
+
+    <!-- Bio -->
+    {% if user.bio %}
+    <p style="font-size:13px; color:#666; margin-top:4px">{{ user.bio }}</p>
+    {% endif %}
+
+    <!-- Contact info -->
+    <div class="profile-contact-row">
+        {% if user.email %}
+        <span class="profile-tag">📧 {{ user.email }}</span>
+        {% endif %}
+        {% if user.phone %}
+        <span class="profile-tag">📞 {{ user.phone }}</span>
+        {% endif %}
+    </div>
+
+    <!-- Verified Badge -->
+    {% if verify and verify.aadhar == 'uploaded' and verify.license == 'uploaded' and verify.rc == 'uploaded' and verify.insurance == 'uploaded' %}
+    <span class="verified-badge">✅ Verified Driver</span>
+    {% endif %}
+
+    <!-- Edit Button -->
+    <a href="/edit-profile" class="edit-profile-btn">✏️ Edit Profile</a>
+
+</div>
+
+
+<!-- 📊 STATS -->
+<div class="stats-row">
+    <div class="stat-card">
+        <h5>{{ offered|length }}</h5>
+        <p>Offered</p>
+    </div>
+    <div class="stat-card">
+        <h5>{{ joined|length }}</h5>
+        <p>Joined</p>
+    </div>
+    <div class="stat-card">
+        <h5>{{ user.total_rides }}</h5>
+        <p>Total</p>
+    </div>
+</div>
+
+<!-- BUTTONS ROW -->
+<div style="display:flex; gap:8px; margin-bottom:15px;">
+    <a href="/summary" class="summary-btn" style="flex:1">📊 Summary</a>
+    <a href="/my-car"  class="summary-btn" style="flex:1">🚗 My Car</a>
+    <a href="/logout"  class="summary-btn" style="flex:1; color:#dc3545">🚪 Logout</a>
+</div>
+
+
+<!-- 🟢 ACTIVE OFFERED RIDES -->
+<div class="card-box">
+    <h6>🟢 Active Rides (Offering)</h6>
+    {% if active_offered %}
+        {% for ride in active_offered %}
+        <div class="ride-card-small" id="rideCard{{ ride.id }}">
+            <div style="flex:1">
+                <strong>{{ ride.from_loc }} → {{ ride.to_loc }}</strong>
+                <p>{{ ride.date }} | {{ ride.time }}</p>
+                <small>Status: <span class="status-badge started">🟢 Live</span></small>
+            </div>
+            <span class="price">₹{{ ride.price }}</span>
+            <div class="ride-actions mt-2" style="width:100%">
+                <a href="/end/{{ ride.id }}" class="mini-btn">⏹ End</a>
+                <button onclick="toggleTracking('{{ ride.id }}')" class="mini-btn track-btn" id="trackBtn{{ ride.id }}">📍 Track</button>
+                <button onclick="sendSOS('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="mini-btn danger">🚨 SOS</button>
+                <button onclick="shareLocation('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="mini-btn">📤 Share</button>
+            </div>
+            <div class="tracking-panel" id="trackPanel{{ ride.id }}" style="display:none; width:100%">
+                <div class="track-status-bar" id="statusBar{{ ride.id }}">🟡 Getting location...</div>
+                <iframe id="liveMap{{ ride.id }}" width="100%" height="200"
+                    style="border-radius:12px; border:none; margin-top:8px;"
+                    src="https://www.google.com/maps?q={{ ride.from_loc }}&output=embed"></iframe>
+                <div class="coords-row">
+                    <div class="coord-box"><span class="coord-label">Latitude</span><span class="coord-val" id="lat{{ ride.id }}">--</span></div>
+                    <div class="coord-box"><span class="coord-label">Longitude</span><span class="coord-val" id="lon{{ ride.id }}">--</span></div>
+                    <div class="coord-box"><span class="coord-label">Updated</span><span class="coord-val" id="upd{{ ride.id }}">--</span></div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="empty-text">No active rides right now</p>
+    {% endif %}
+</div>
+
+
+<!-- 🟢 ACTIVE JOINED RIDES -->
+<div class="card-box">
+    <h6>🟢 Active Rides (Joined)</h6>
+    {% if active_joined %}
+        {% for ride in active_joined %}
+        <div class="ride-card-small">
+            <div style="flex:1">
+                <strong>{{ ride.from_loc }} → {{ ride.to_loc }}</strong>
+                <p>{{ ride.date }} | {{ ride.time }}</p>
+                <div style="margin-top:6px; display:flex; gap:6px;">
+                    <button onclick="toggleTracking('pass{{ ride.id }}')" class="mini-btn track-btn">📍 Track</button>
+                    <button onclick="sendSOS('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="mini-btn danger">🚨 SOS</button>
+                </div>
+                <div class="tracking-panel" id="trackPanelpass{{ ride.id }}" style="display:none">
+                    <div class="track-status-bar" id="statusBarpass{{ ride.id }}">🟡 Getting location...</div>
+                    <iframe id="liveMappass{{ ride.id }}" width="100%" height="180"
+                        style="border-radius:12px; border:none; margin-top:8px;"
+                        src="https://www.google.com/maps?q={{ ride.from_loc }}&output=embed"></iframe>
+                    <div class="coords-row">
+                        <div class="coord-box"><span class="coord-label">Lat</span><span class="coord-val" id="latpass{{ ride.id }}">--</span></div>
+                        <div class="coord-box"><span class="coord-label">Lon</span><span class="coord-val" id="lonpass{{ ride.id }}">--</span></div>
+                        <div class="coord-box"><span class="coord-label">Time</span><span class="coord-val" id="updpass{{ ride.id }}">--</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="action-side">
+                <span class="price">₹{{ ride.price }}</span>
+                <a href="/cancel/{{ ride.booking_id }}" class="cancel-btn">Cancel</a>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="empty-text">No active joined rides</p>
+    {% endif %}
+</div>
+
+
+<!-- ⏳ UPCOMING -->
+<div class="card-box">
+    <h6>⏳ Upcoming Rides</h6>
+    {% if upcoming %}
+        {% for ride in upcoming %}
+        <div class="ride-card-small">
+            <div style="flex:1">
+                <strong>{{ ride.from_loc }} → {{ ride.to_loc }}</strong>
+                <p>{{ ride.date }} | {{ ride.time }}</p>
+                {% if ride.get('countdown') %}
+                <div class="countdown-inline">⏱️ {{ ride.countdown }}</div>
+                {% endif %}
+            </div>
+            <div style="text-align:right">
+                <span class="price">₹{{ ride.price }}</span>
+                {% if ride.get('id') %}
+                <div style="margin-top:6px">
+                    <a href="/start/{{ ride.id }}" class="mini-btn" style="font-size:11px">▶ Start</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="empty-text">No upcoming rides</p>
+    {% endif %}
+</div>
+
+
+<!-- ⭐ REVIEWS RECEIVED -->
+<div class="card-box">
+    <h6>⭐ Reviews</h6>
+    {% if reviews_received %}
+        {% for r in reviews_received %}
+        <div class="review-card">
+            <div class="review-top">
+                <div class="review-stars">
+                    {% for i in range(r.stars | int) %}⭐{% endfor %}
+                </div>
+                <span class="review-role-tag">{{ r.reviewer_role }}</span>
+                <span class="review-date">{{ r.created_at }}</span>
+            </div>
+            {% if r.review_text %}
+            <p class="review-text">"{{ r.review_text }}"</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="empty-text">No reviews yet</p>
+    {% endif %}
+</div>
+
+
+<!-- 📄 DOCUMENTS -->
+<div class="card-box">
+    <h6>📄 Documents</h6>
+    <div class="doc-row">
+        <span>📄 Aadhar Card</span>
+        {% if verify and verify.aadhar == 'uploaded' %}<span class="badge-verified">✅ Verified</span>
+        {% else %}<span class="badge-pending">⏳ Pending</span>{% endif %}
+    </div>
+    <div class="doc-row">
+        <span>📄 Driving License</span>
+        {% if verify and verify.license == 'uploaded' %}<span class="badge-verified">✅ Verified</span>
+        {% else %}<span class="badge-pending">⏳ Pending</span>{% endif %}
+    </div>
+    <div class="doc-row">
+        <span>📄 RC Book</span>
+        {% if verify and verify.rc == 'uploaded' %}<span class="badge-verified">✅ Verified</span>
+        {% else %}<span class="badge-pending">⏳ Pending</span>{% endif %}
+    </div>
+    <div class="doc-row">
+        <span>📄 Insurance</span>
+        {% if verify and verify.insurance == 'uploaded' %}<span class="badge-verified">✅ Verified</span>
+        {% else %}<span class="badge-pending">⏳ Pending</span>{% endif %}
+    </div>
+    <a href="/verify" class="edit-contacts-btn">📤 Upload / Update Documents</a>
+</div>
+
+
+<!-- 📞 EMERGENCY CONTACTS -->
+<div class="card-box">
+    <h6>🚨 Emergency Contacts</h6>
+    {% if contacts %}
+    <div class="contact-row">
+        <span>👤 {{ contacts.name1 }}</span>
+        <a href="tel:{{ contacts.phone1 }}" class="call-btn">📞 Call</a>
+    </div>
+    <div class="contact-row">
+        <span>👤 {{ contacts.name2 }}</span>
+        <a href="tel:{{ contacts.phone2 }}" class="call-btn">📞 Call</a>
+    </div>
+    {% else %}
+    <p class="empty-text">No emergency contacts saved</p>
+    {% endif %}
+    <a href="/emergency" class="edit-contacts-btn">✏️ Edit Contacts</a>
+</div>
+
+
+<!-- 🔧 JS -->
+<script>
+    let trackingIntervals = {};
+
+    function toggleTracking(rideId) {
+        let panel = document.getElementById('trackPanel' + rideId);
+        let btn   = document.getElementById('trackBtn' + rideId);
+        if (!panel) return;
+        if (panel.style.display === 'none') {
+            panel.style.display = 'block';
+            if (btn) btn.textContent = '⏹ Stop';
+            updateLiveLocation(rideId);
+            trackingIntervals[rideId] = setInterval(() => updateLiveLocation(rideId), 10000);
+        } else {
+            panel.style.display = 'none';
+            if (btn) btn.textContent = '📍 Track';
+            clearInterval(trackingIntervals[rideId]);
+            delete trackingIntervals[rideId];
+        }
+    }
+
+    function updateLiveLocation(rideId) {
+        let statusBar = document.getElementById('statusBar' + rideId);
+        if (!navigator.geolocation) { if (statusBar) statusBar.innerHTML = '🔴 GPS not supported'; return; }
+        navigator.geolocation.getCurrentPosition(
+            function(pos) {
+                let lat = pos.coords.latitude, lon = pos.coords.longitude;
+                let latEl = document.getElementById('lat' + rideId);
+                let lonEl = document.getElementById('lon' + rideId);
+                let updEl = document.getElementById('upd' + rideId);
+                if (latEl) latEl.textContent = lat.toFixed(5);
+                if (lonEl) lonEl.textContent = lon.toFixed(5);
+                if (updEl) { let n = new Date(); updEl.textContent = n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0'); }
+                let map = document.getElementById('liveMap' + rideId);
+                if (map) map.src = `https://www.google.com/maps?q=${lat},${lon}&output=embed&z=15`;
+                if (statusBar) { statusBar.innerHTML = '🟢 Live — Updates every 10s'; statusBar.style.color='#155724'; statusBar.style.background='#d4edda'; }
+            },
+            function() { if (statusBar) { statusBar.innerHTML = '🔴 Location denied'; statusBar.style.color='#721c24'; statusBar.style.background='#f8d7da'; } }
+        );
+    }
+
+    function shareLocation(from, to) {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                let link = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                window.open("https://wa.me/?text=" + encodeURIComponent(`📍 Traveling from ${from} to ${to}.\nTrack me: ${link}`));
+            });
+        }
+    }
+
+    function sendSOS(from, to) {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                let link = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                {% if contacts and contacts.phone1 %}
+                window.open("https://wa.me/91{{ contacts.phone1 }}?text=" + encodeURIComponent(`🚨 EMERGENCY! ${from} to ${to}. Help: ${link}`));
+                {% endif %}
+                {% if contacts and contacts.phone2 %}
+                setTimeout(() => window.open("https://wa.me/91{{ contacts.phone2 }}?text=" + encodeURIComponent(`🚨 EMERGENCY! ${from} to ${to}. Help: ${link}`)), 1500);
+                {% endif %}
+                {% if not contacts %}alert("⚠️ No emergency contacts saved!");{% endif %}
+            });
+        }
+    }
+</script>
+
+<!-- Legal links at bottom of profile -->
+<div class="profile-legal-row">
+    <a href="/legal?tab=tc">📜 Terms & Conditions</a>
+    <span>·</span>
+    <a href="/legal?tab=pp">🔒 Privacy Policy</a>
+</div>
+
+<div class="legal-footer" style="margin-bottom:80px">
+    © 2026 Tripzy™ — All rights reserved.
+</div>
+
+{% endblock %}

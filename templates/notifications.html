@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h5 class="section-title">🔔 Notifications</h5>
+
+{% if notifs %}
+    {% for n in notifs %}
+    <div class="notif-card {{ 'unread' if not n.is_read else '' }}">
+
+        <div class="notif-icon">
+            {% if 'booked' in n.message.lower() %}🎟
+            {% elif 'cancelled' in n.message.lower() %}❌
+            {% elif 'started' in n.message.lower() %}🚗
+            {% else %}🔔
+            {% endif %}
+        </div>
+
+        <div class="notif-body">
+            <p class="notif-msg">{{ n.message }}</p>
+            <span class="notif-time">{{ n.created_at }}</span>
+        </div>
+
+        {% if not n.is_read %}
+        <a href="/notif/read/{{ n.id }}" class="notif-read-btn">✓</a>
+        {% endif %}
+
+    </div>
+    {% endfor %}
+
+    <a href="/profile" class="back-link">← Back to Profile</a>
+
+{% else %}
+    <div class="inbox-empty">
+        <div style="font-size:48px">🔔</div>
+        <p style="font-weight:600; margin-top:10px">No notifications yet</p>
+        <p style="font-size:12px; color:#aaa">Booking alerts will appear here</p>
+    </div>
+{% endif %}
+
+{% endblock %}
