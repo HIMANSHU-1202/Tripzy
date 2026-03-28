@@ -14,7 +14,7 @@
         <input type="hidden" name="from" value="{{ request.form.get('from','') }}">
         <input type="hidden" name="to" value="{{ request.form.get('to','') }}">
 
-        <h6>Filters</h6>
+        <h6>Filters <small style="font-size:10px; color:#aaa; font-weight:400">(shown as warnings on cards)</small></h6>
 
         <div class="chips">
             <input type="radio" name="ac" value="Yes" id="ac1">
@@ -25,14 +25,35 @@
 
         <div class="chips">
             <input type="radio" name="smoking" value="Allowed" id="s1">
-            <label for="s1">🚬 Allowed</label>
+            <label for="s1">🚬 Smoking OK</label>
             <input type="radio" name="smoking" value="Not Allowed" id="s2">
             <label for="s2">No Smoking</label>
         </div>
 
         <div class="chips">
+            <input type="radio" name="music" value="Allowed" id="mu1">
+            <label for="mu1">🎵 Music OK</label>
+            <input type="radio" name="music" value="Not Allowed" id="mu2">
+            <label for="mu2">No Music</label>
+        </div>
+
+        <div class="chips">
+            <input type="radio" name="luggage" value="Available" id="lu1">
+            <label for="lu1">🧳 Luggage</label>
+            <input type="radio" name="luggage" value="Not Available" id="lu2">
+            <label for="lu2">No Luggage</label>
+        </div>
+
+        <div class="chips">
+            <input type="radio" name="stops" value="Yes" id="st1">
+            <label for="st1">🚻 Stops OK</label>
+            <input type="radio" name="stops" value="No" id="st2">
+            <label for="st2">No Stops</label>
+        </div>
+
+        <div class="chips">
             <input type="radio" name="pets" value="Allowed" id="p1">
-            <label for="p1">🐶 Pets</label>
+            <label for="p1">🐶 Pets OK</label>
             <input type="radio" name="pets" value="Not Allowed" id="p2">
             <label for="p2">No Pets</label>
         </div>
@@ -73,13 +94,56 @@
                     <span>{{ ride.to_loc }}</span>
                 </div>
                 <div class="ride-info">{{ ride.date }} | {{ ride.time }}</div>
-                <div class="ride-bottom">
+
+                <!-- Smart status badge -->
+                {% if ride.smart_status == 'started' %}
+                <div class="home-ride-status active-status" style="margin-top:4px">🟢 In Progress</div>
+                {% elif ride.countdown %}
+                <div class="home-ride-status upcoming-status" style="margin-top:4px">⏱️ {{ ride.countdown }}</div>
+                {% endif %}
+
+                <div class="ride-bottom" style="margin-top:6px">
                     <span class="price">₹{{ ride.price }}</span>
                     <span>{{ ride.seats }} seats</span>
                 </div>
             </a>
 
-            <!-- 💬 Message Driver button -->
+            <!-- ⚠️ PREFERENCE WARNINGS — show if user's filter doesn't match ride -->
+            {% if user_prefs %}
+            <div class="pref-warnings">
+
+                {% if user_prefs.ac and ride.ac and ride.ac != user_prefs.ac %}
+                <span class="pref-warn">❄️ AC: {{ ride.ac }}</span>
+                {% endif %}
+
+                {% if user_prefs.smoking and ride.smoking and ride.smoking != user_prefs.smoking %}
+                <span class="pref-warn">🚬 {{ ride.smoking }}</span>
+                {% endif %}
+
+                {% if user_prefs.music and ride.music and ride.music != user_prefs.music %}
+                <span class="pref-warn">🎵 {{ ride.music }}</span>
+                {% endif %}
+
+                {% if user_prefs.luggage and ride.luggage and ride.luggage != user_prefs.luggage %}
+                <span class="pref-warn">🧳 {{ ride.luggage }}</span>
+                {% endif %}
+
+                {% if user_prefs.stops and ride.stops and ride.stops != user_prefs.stops %}
+                <span class="pref-warn">🚻 Stops: {{ ride.stops }}</span>
+                {% endif %}
+
+                {% if user_prefs.pets and ride.pets and ride.pets != user_prefs.pets %}
+                <span class="pref-warn">🐶 {{ ride.pets }}</span>
+                {% endif %}
+
+                {% if user_prefs.charging and ride.charging and ride.charging != user_prefs.charging %}
+                <span class="pref-warn">🔌 {{ ride.charging }}</span>
+                {% endif %}
+
+            </div>
+            {% endif %}
+
+            <!-- Action buttons -->
             <div style="margin-top:8px; display:flex; gap:8px">
                 <a href="/ride/{{ ride.id }}" class="result-action-btn">
                     🔍 View
