@@ -84,9 +84,11 @@
                 <a href="/ride/{{ ride.id }}" class="result-action-btn">
                     🔍 View
                 </a>
-                <a href="/chat/Driver_{{ ride.id }}?ride_id={{ ride.id }}" class="result-action-btn msg">
+                {% if ride.user_email %}
+                <a href="/chat/{{ ride.user_email }}?ride_id={{ ride.id }}" class="result-action-btn msg">
                     💬 Message
                 </a>
+                {% endif %}
             </div>
 
         </div>

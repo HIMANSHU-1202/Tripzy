@@ -15,7 +15,7 @@
 
         <!-- Avatar -->
         <div class="chat-avatar-box">
-            <div class="chat-avatar-inner">{{ chat.user[0] | upper }}</div>
+            <div class="chat-avatar-inner">{{ (chat.display_name or chat.user)[0] | upper }}</div>
         </div>
 
         <!-- Info -->

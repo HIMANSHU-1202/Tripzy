@@ -7,12 +7,12 @@
     <a href="/inbox" class="chat-back-btn">←</a>
 
     <div class="chat-header-avatar-box">
-        <div class="chat-header-initials">{{ user[0] | upper }}</div>
+        <div class="chat-header-initials">{{ (display_name or user)[0] | upper }}</div>
         <div class="chat-online-dot"></div>
     </div>
 
     <div class="chat-header-info">
-        <div class="chat-header-name">{{ user }}</div>
+        <div class="chat-header-name">{{ display_name or user }}</div>
         <div class="chat-header-sub">Tripzy User</div>
     </div>
 </div>
@@ -52,7 +52,7 @@
     {% else %}
         <div class="chat-no-msgs">
             <div style="font-size:40px">👋</div>
-            <p>Start a conversation with <strong>{{ user }}</strong></p>
+            <p>Start a conversation with <strong>{{ display_name or user }}</strong></p>
             {% if ride_context %}
             <p style="font-size:12px; color:#aaa">About: {{ ride_context.from_loc }} → {{ ride_context.to_loc }}</p>
             {% endif %}
