@@ -3,58 +3,38 @@
 {% block content %}
 
 <!-- 👤 PROFILE HEADER -->
-<div class="profile-header">
-
-    <!-- Photo -->
+<div class="profile-header fade-in">
     {% if user.photo %}
-        <img src="{{ user.photo }}" class="profile-img"
-            onerror="this.outerHTML='<div class=profile-img-placeholder>👤</div>'">
+    <img src="{{ user.photo }}" class="profile-img" onerror="this.outerHTML='<div class=profile-img-placeholder>👤</div>'">
     {% else %}
-        <div class="profile-img-placeholder">👤</div>
+    <div class="profile-img-placeholder">👤</div>
     {% endif %}
 
     <h4>{{ user.name }}</h4>
 
-    <!-- Rating -->
     {% set avg = user.avg_rating | float %}
-    {% set total = user.total_ratings | int %}
     {% if avg > 0 %}
-    <p class="rating">
-        {% for i in range(avg | int) %}⭐{% endfor %}
-        <strong>{{ avg }}</strong> / 5 &nbsp;·&nbsp; {{ total }} review{{ 's' if total != 1 else '' }}
-    </p>
+    <p class="rating">{% for i in range(avg | int) %}⭐{% endfor %} <strong>{{ avg }}</strong> / 5 · {{ user.total_ratings }} review{{ 's' if user.total_ratings != 1 else '' }}</p>
     {% else %}
     <p class="rating" style="color:#aaa; font-size:13px">⭐ No ratings yet</p>
     {% endif %}
 
-    <!-- Bio -->
-    {% if user.bio %}
-    <p style="font-size:13px; color:#666; margin-top:4px">{{ user.bio }}</p>
-    {% endif %}
+    {% if user.bio %}<p style="font-size:13px; color:#666; margin-top:4px">{{ user.bio }}</p>{% endif %}
 
-    <!-- Contact info -->
     <div class="profile-contact-row">
-        {% if user.email %}
-        <span class="profile-tag">📧 {{ user.email }}</span>
-        {% endif %}
-        {% if user.phone %}
-        <span class="profile-tag">📞 {{ user.phone }}</span>
-        {% endif %}
+        {% if user.email %}<span class="profile-tag">📧 {{ user.email }}</span>{% endif %}
+        {% if user.phone %}<span class="profile-tag">📞 {{ user.phone }}</span>{% endif %}
     </div>
 
-    <!-- Verified Badge -->
     {% if verify and verify.aadhar == 'uploaded' and verify.license == 'uploaded' and verify.rc == 'uploaded' and verify.insurance == 'uploaded' %}
     <span class="verified-badge">✅ Verified Driver</span>
     {% endif %}
 
-    <!-- Edit Button -->
-    <a href="/edit-profile" class="edit-profile-btn">✏️ Edit Profile</a>
-
+    <a href="/edit-profile" class="edit-profile-btn ripple-btn">✏️ Edit Profile</a>
 </div>
 
-
 <!-- 📊 STATS -->
-<div class="stats-row">
+<div class="stats-row fade-in">
     <div class="stat-card">
         <h5>{{ offered|length }}</h5>
         <p>Offered</p>
@@ -69,64 +49,110 @@
     </div>
 </div>
 
-<!-- BUTTONS ROW -->
-<div style="display:flex; gap:8px; margin-bottom:15px;">
-    <a href="/summary" class="summary-btn" style="flex:1">📊 Summary</a>
-    <a href="/my-car"  class="summary-btn" style="flex:1">🚗 My Car</a>
-    <a href="/logout"  class="summary-btn" style="flex:1; color:#dc3545">🚪 Logout</a>
+<!-- QUICK ACTIONS -->
+<div style="display:flex; gap:8px; margin-bottom:16px" class="fade-in">
+    <a href="/summary" class="summary-btn ripple-btn" style="flex:1">📊 Summary</a>
+    <a href="/my-car"  class="summary-btn ripple-btn" style="flex:1">🚗 My Car</a>
+    <a href="/logout"  class="summary-btn ripple-btn" style="flex:1; color:#dc3545">🚪 Logout</a>
 </div>
 
 
+<!-- ══════════════════════════════
+     🚗 RIDES — EXPANDABLE CARDS
+══════════════════════════════ -->
+
 <!-- 🟢 ACTIVE OFFERED RIDES -->
-<div class="card-box">
-    <h6>🟢 Active Rides (Offering)</h6>
-    {% if active_offered %}
-        {% for ride in active_offered %}
-        <div class="ride-card-small" id="rideCard{{ ride.id }}">
-            <div style="flex:1">
-                <strong>{{ ride.from_loc }} → {{ ride.to_loc }}</strong>
-                <p>{{ ride.date }} | {{ ride.time }}</p>
-                <small>Status: <span class="status-badge started">🟢 Live</span></small>
-            </div>
-            <span class="price">₹{{ ride.price }}</span>
-            <div class="ride-actions mt-2" style="width:100%">
-                <a href="/end/{{ ride.id }}" class="mini-btn">⏹ End</a>
-                <button onclick="toggleTracking('{{ ride.id }}')" class="mini-btn track-btn" id="trackBtn{{ ride.id }}">📍 Track</button>
-                <button onclick="sendSOS('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="mini-btn danger">🚨 SOS</button>
-                <button onclick="shareLocation('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="mini-btn">📤 Share</button>
-            </div>
-            <div class="tracking-panel" id="trackPanel{{ ride.id }}" style="display:none; width:100%">
-                <div class="track-status-bar" id="statusBar{{ ride.id }}">🟡 Getting location...</div>
-                <iframe id="liveMap{{ ride.id }}" width="100%" height="200"
-                    style="border-radius:12px; border:none; margin-top:8px;"
-                    src="https://www.google.com/maps?q={{ ride.from_loc }}&output=embed"></iframe>
-                <div class="coords-row">
-                    <div class="coord-box"><span class="coord-label">Latitude</span><span class="coord-val" id="lat{{ ride.id }}">--</span></div>
-                    <div class="coord-box"><span class="coord-label">Longitude</span><span class="coord-val" id="lon{{ ride.id }}">--</span></div>
-                    <div class="coord-box"><span class="coord-label">Updated</span><span class="coord-val" id="upd{{ ride.id }}">--</span></div>
+{% set ao_count = active_offered|length %}
+<div class="expand-card {% if ao_count > 0 %}has-items{% endif %}" id="card-active-offered">
+    <div class="expand-header" onclick="toggleCard('active-offered')">
+        <div class="expand-title">
+            <span class="expand-dot green-dot"></span>
+            🚗 Active Rides <small>(Offering)</small>
+        </div>
+        <div class="expand-right">
+            <span class="expand-count {% if ao_count > 0 %}count-active{% endif %}">{{ ao_count }}</span>
+            <span class="expand-chevron" id="chev-active-offered">▼</span>
+        </div>
+    </div>
+    <div class="expand-body" id="body-active-offered" style="display:{% if ao_count > 0 %}block{% else %}none{% endif %}">
+        {% if active_offered %}
+            {% for ride in active_offered %}
+            <div class="ride-item-card slide-up">
+                <div class="ride-item-top">
+                    <div>
+                        <div class="ride-item-route">{{ ride.from_loc }} → {{ ride.to_loc }}</div>
+                        <div class="ride-item-meta">{{ ride.date }} | {{ ride.time }} · ₹{{ ride.price }}</div>
+                        <span class="status-badge started">🟢 Live Now</span>
+                    </div>
+                    <div class="ride-item-seats">{{ ride.seats }} seats</div>
+                </div>
+
+                <!-- DRIVER ACTIONS ONLY -->
+                <div class="ride-item-actions">
+                    <a href="/end/{{ ride.id }}" class="ride-act-btn end ripple-btn">⏹ End</a>
+                    <button onclick="toggleTracking('{{ ride.id }}')" class="ride-act-btn track ripple-btn" id="trackBtn{{ ride.id }}">📍 Track</button>
+                    <button onclick="sendSOS('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="ride-act-btn sos ripple-btn">🚨 SOS</button>
+                    <button onclick="shareLocation('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="ride-act-btn share ripple-btn">📤 Share</button>
+                </div>
+
+                <!-- Inline tracking panel -->
+                <div class="tracking-panel" id="trackPanel{{ ride.id }}" style="display:none">
+                    <div class="track-status-bar" id="statusBar{{ ride.id }}">🟡 Getting location...</div>
+                    <iframe id="liveMap{{ ride.id }}" width="100%" height="180"
+                        style="border-radius:12px; border:none; margin-top:8px;"
+                        src="https://www.google.com/maps?q={{ ride.from_loc }}&output=embed"></iframe>
+                    <div class="coords-row">
+                        <div class="coord-box"><span class="coord-label">Lat</span><span class="coord-val" id="lat{{ ride.id }}">--</span></div>
+                        <div class="coord-box"><span class="coord-label">Lon</span><span class="coord-val" id="lon{{ ride.id }}">--</span></div>
+                        <div class="coord-box"><span class="coord-label">Updated</span><span class="coord-val" id="upd{{ ride.id }}">--</span></div>
+                    </div>
                 </div>
             </div>
-        </div>
-        {% endfor %}
-    {% else %}
-        <p class="empty-text">No active rides right now</p>
-    {% endif %}
+            {% endfor %}
+        {% else %}
+            <p class="empty-text">No active rides right now</p>
+        {% endif %}
+    </div>
 </div>
 
 
 <!-- 🟢 ACTIVE JOINED RIDES -->
-<div class="card-box">
-    <h6>🟢 Active Rides (Joined)</h6>
-    {% if active_joined %}
-        {% for ride in active_joined %}
-        <div class="ride-card-small">
-            <div style="flex:1">
-                <strong>{{ ride.from_loc }} → {{ ride.to_loc }}</strong>
-                <p>{{ ride.date }} | {{ ride.time }}</p>
-                <div style="margin-top:6px; display:flex; gap:6px;">
-                    <button onclick="toggleTracking('pass{{ ride.id }}')" class="mini-btn track-btn">📍 Track</button>
-                    <button onclick="sendSOS('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="mini-btn danger">🚨 SOS</button>
+{% set aj_count = active_joined|length %}
+<div class="expand-card {% if aj_count > 0 %}has-items{% endif %}" id="card-active-joined">
+    <div class="expand-header" onclick="toggleCard('active-joined')">
+        <div class="expand-title">
+            <span class="expand-dot blue-dot"></span>
+            🎟 Active Rides <small>(Joined)</small>
+        </div>
+        <div class="expand-right">
+            <span class="expand-count {% if aj_count > 0 %}count-active{% endif %}">{{ aj_count }}</span>
+            <span class="expand-chevron" id="chev-active-joined">▼</span>
+        </div>
+    </div>
+    <div class="expand-body" id="body-active-joined" style="display:{% if aj_count > 0 %}block{% else %}none{% endif %}">
+        {% if active_joined %}
+            {% for ride in active_joined %}
+            <div class="ride-item-card slide-up">
+                <div class="ride-item-top">
+                    <div>
+                        <div class="ride-item-route">{{ ride.from_loc }} → {{ ride.to_loc }}</div>
+                        <div class="ride-item-meta">{{ ride.date }} | {{ ride.time }} · ₹{{ ride.price }}</div>
+                        <small class="booking-time">Booked: {{ ride.booked_at }}</small>
+                    </div>
+                    <div class="ride-item-seats">{{ ride.seats }} left</div>
                 </div>
+
+                <!-- PASSENGER ACTIONS ONLY — no start button -->
+                <div class="ride-item-actions">
+                    <button onclick="toggleTracking('pass{{ ride.id }}')" class="ride-act-btn track ripple-btn">📍 Track</button>
+                    <button onclick="sendSOS('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="ride-act-btn sos ripple-btn">🚨 SOS</button>
+                    {% if ride.user_email %}
+                    <a href="/chat/{{ ride.user_email }}?ride_id={{ ride.id }}" class="ride-act-btn msg ripple-btn">💬 Driver</a>
+                    {% endif %}
+                    <button onclick="shareLocation('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="ride-act-btn share ripple-btn">📤 Share</button>
+                </div>
+
+                <!-- Inline tracking -->
                 <div class="tracking-panel" id="trackPanelpass{{ ride.id }}" style="display:none">
                     <div class="track-status-bar" id="statusBarpass{{ ride.id }}">🟡 Getting location...</div>
                     <iframe id="liveMappass{{ ride.id }}" width="100%" height="180"
@@ -135,196 +161,372 @@
                     <div class="coords-row">
                         <div class="coord-box"><span class="coord-label">Lat</span><span class="coord-val" id="latpass{{ ride.id }}">--</span></div>
                         <div class="coord-box"><span class="coord-label">Lon</span><span class="coord-val" id="lonpass{{ ride.id }}">--</span></div>
-                        <div class="coord-box"><span class="coord-label">Time</span><span class="coord-val" id="updpass{{ ride.id }}">--</span></div>
+                        <div class="coord-box"><span class="coord-label">Updated</span><span class="coord-val" id="updpass{{ ride.id }}">--</span></div>
                     </div>
                 </div>
+
+                <!-- Rating -->
+                <div style="margin-top:8px">
+                    {% if ride.rating %}
+                    <p class="rated">⭐ Rated {{ ride.rating }}/5</p>
+                    {% else %}
+                    <form action="/rate/{{ ride.booking_id }}" method="POST" class="rating-form">
+                        <select name="rating"><option value="5">⭐ 5</option><option value="4">⭐ 4</option><option value="3">⭐ 3</option><option value="2">⭐ 2</option><option value="1">⭐ 1</option></select>
+                        <button class="rate-btn ripple-btn">Rate</button>
+                    </form>
+                    {% endif %}
+                </div>
+
+                <div style="text-align:right; margin-top:6px">
+                    <a href="/cancel/{{ ride.booking_id }}" class="cancel-btn">Cancel Booking</a>
+                </div>
             </div>
-            <div class="action-side">
-                <span class="price">₹{{ ride.price }}</span>
-                <a href="/cancel/{{ ride.booking_id }}" class="cancel-btn">Cancel</a>
-            </div>
-        </div>
-        {% endfor %}
-    {% else %}
-        <p class="empty-text">No active joined rides</p>
-    {% endif %}
+            {% endfor %}
+        {% else %}
+            <p class="empty-text">No active joined rides</p>
+        {% endif %}
+    </div>
 </div>
 
 
-<!-- ⏳ UPCOMING -->
-<div class="card-box">
-    <h6>⏳ Upcoming Rides</h6>
-    {% if upcoming %}
-        {% for ride in upcoming %}
-        <div class="ride-card-small">
-            <div style="flex:1">
-                <strong>{{ ride.from_loc }} → {{ ride.to_loc }}</strong>
-                <p>{{ ride.date }} | {{ ride.time }}</p>
-                {% if ride.get('countdown') %}
-                <div class="countdown-inline">⏱️ {{ ride.countdown }}</div>
-                {% endif %}
-            </div>
-            <div style="text-align:right">
-                <span class="price">₹{{ ride.price }}</span>
-                {% if ride.get('id') %}
-                <div style="margin-top:6px">
-                    <a href="/start/{{ ride.id }}" class="mini-btn" style="font-size:11px">▶ Start</a>
-                </div>
-                {% endif %}
-            </div>
+<!-- ⏳ UPCOMING OFFERED -->
+{% set uo_count = upcoming_offered|length %}
+<div class="expand-card" id="card-upcoming-offered">
+    <div class="expand-header" onclick="toggleCard('upcoming-offered')">
+        <div class="expand-title">
+            <span class="expand-dot yellow-dot"></span>
+            ⏳ Upcoming <small>(Offering)</small>
         </div>
-        {% endfor %}
-    {% else %}
-        <p class="empty-text">No upcoming rides</p>
-    {% endif %}
+        <div class="expand-right">
+            <span class="expand-count">{{ uo_count }}</span>
+            <span class="expand-chevron" id="chev-upcoming-offered">▶</span>
+        </div>
+    </div>
+    <div class="expand-body" id="body-upcoming-offered" style="display:none">
+        {% if upcoming_offered %}
+            {% for ride in upcoming_offered %}
+            <div class="ride-item-card slide-up">
+                <div class="ride-item-top">
+                    <div>
+                        <div class="ride-item-route">{{ ride.from_loc }} → {{ ride.to_loc }}</div>
+                        <div class="ride-item-meta">{{ ride.date }} | {{ ride.time }} · ₹{{ ride.price }}</div>
+                        {% if ride.countdown %}<div class="countdown-inline">⏱️ {{ ride.countdown }}</div>{% endif %}
+                    </div>
+                    <span class="price">₹{{ ride.price }}</span>
+                </div>
+                <div class="ride-item-actions">
+                    <a href="/start/{{ ride.id }}" class="ride-act-btn start ripple-btn">▶ Start</a>
+                    <button onclick="sendSOS('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="ride-act-btn sos ripple-btn">🚨 SOS</button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-text">No upcoming offered rides</p>
+        {% endif %}
+    </div>
 </div>
 
 
-<!-- ⭐ REVIEWS RECEIVED -->
-<div class="card-box">
-    <h6>⭐ Reviews</h6>
-    {% if reviews_received %}
-        {% for r in reviews_received %}
-        <div class="review-card">
-            <div class="review-top">
-                <div class="review-stars">
-                    {% for i in range(r.stars | int) %}⭐{% endfor %}
-                </div>
-                <span class="review-role-tag">{{ r.reviewer_role }}</span>
-                <span class="review-date">{{ r.created_at }}</span>
-            </div>
-            {% if r.review_text %}
-            <p class="review-text">"{{ r.review_text }}"</p>
-            {% endif %}
+<!-- ⏳ UPCOMING JOINED -->
+{% set uj_count = upcoming_joined|length %}
+<div class="expand-card" id="card-upcoming-joined">
+    <div class="expand-header" onclick="toggleCard('upcoming-joined')">
+        <div class="expand-title">
+            <span class="expand-dot purple-dot"></span>
+            🎟 Upcoming <small>(Joined)</small>
         </div>
-        {% endfor %}
-    {% else %}
-        <p class="empty-text">No reviews yet</p>
-    {% endif %}
+        <div class="expand-right">
+            <span class="expand-count">{{ uj_count }}</span>
+            <span class="expand-chevron" id="chev-upcoming-joined">▶</span>
+        </div>
+    </div>
+    <div class="expand-body" id="body-upcoming-joined" style="display:none">
+        {% if upcoming_joined %}
+            {% for ride in upcoming_joined %}
+            <div class="ride-item-card slide-up">
+                <div class="ride-item-top">
+                    <div>
+                        <div class="ride-item-route">{{ ride.from_loc }} → {{ ride.to_loc }}</div>
+                        <div class="ride-item-meta">{{ ride.date }} | {{ ride.time }}</div>
+                        {% if ride.countdown %}<div class="countdown-inline">⏱️ {{ ride.countdown }}</div>{% endif %}
+                    </div>
+                    <span class="price">₹{{ ride.price }}</span>
+                </div>
+                <div class="ride-item-actions">
+                    {% if ride.user_email %}
+                    <a href="/chat/{{ ride.user_email }}?ride_id={{ ride.id }}" class="ride-act-btn msg ripple-btn">💬 Driver</a>
+                    {% endif %}
+                    <button onclick="sendSOS('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="ride-act-btn sos ripple-btn">🚨 SOS</button>
+                    <a href="https://wa.me/?text=I'm joining ride from {{ ride.from_loc }} to {{ ride.to_loc }} on {{ ride.date }}" target="_blank" class="ride-act-btn share ripple-btn">📤 Share</a>
+                </div>
+                <div style="text-align:right; margin-top:6px">
+                    {% if ride.booking_id %}
+                    <a href="/cancel/{{ ride.booking_id }}" class="cancel-btn">Cancel</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-text">No upcoming joined rides</p>
+        {% endif %}
+    </div>
+</div>
+
+
+<!-- ✅ COMPLETED OFFERED -->
+{% set co_count = completed_offered|length %}
+<div class="expand-card" id="card-completed-offered">
+    <div class="expand-header" onclick="toggleCard('completed-offered')">
+        <div class="expand-title">
+            <span class="expand-dot grey-dot"></span>
+            ✅ Completed <small>(Offered)</small>
+        </div>
+        <div class="expand-right">
+            <span class="expand-count">{{ co_count }}</span>
+            <span class="expand-chevron" id="chev-completed-offered">▶</span>
+        </div>
+    </div>
+    <div class="expand-body" id="body-completed-offered" style="display:none">
+        {% if completed_offered %}
+            {% for ride in completed_offered %}
+            <div class="ride-item-card completed-card slide-up">
+                <div class="ride-item-route" style="opacity:0.7">{{ ride.from_loc }} → {{ ride.to_loc }}</div>
+                <div class="ride-item-meta">{{ ride.date }} · ₹{{ ride.price }}</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-text">No completed rides yet</p>
+        {% endif %}
+    </div>
+</div>
+
+
+<!-- ✅ COMPLETED JOINED -->
+{% set cj_count = completed_joined|length %}
+<div class="expand-card" id="card-completed-joined">
+    <div class="expand-header" onclick="toggleCard('completed-joined')">
+        <div class="expand-title">
+            <span class="expand-dot grey-dot"></span>
+            ✅ Completed <small>(Joined)</small>
+        </div>
+        <div class="expand-right">
+            <span class="expand-count">{{ cj_count }}</span>
+            <span class="expand-chevron" id="chev-completed-joined">▶</span>
+        </div>
+    </div>
+    <div class="expand-body" id="body-completed-joined" style="display:none">
+        {% if completed_joined %}
+            {% for ride in completed_joined %}
+            <div class="ride-item-card completed-card slide-up">
+                <div class="ride-item-route" style="opacity:0.7">{{ ride.from_loc }} → {{ ride.to_loc }}</div>
+                <div class="ride-item-meta">{{ ride.date }} · ₹{{ ride.price }}</div>
+                {% if ride.rating %}
+                <p class="rated" style="margin-top:4px">⭐ Rated {{ ride.rating }}/5</p>
+                {% else %}
+                <form action="/rate/{{ ride.booking_id }}" method="POST" class="rating-form" style="margin-top:6px">
+                    <select name="rating"><option value="5">⭐ 5</option><option value="4">⭐ 4</option><option value="3">⭐ 3</option><option value="2">⭐ 2</option><option value="1">⭐ 1</option></select>
+                    <button class="rate-btn ripple-btn">Rate</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-text">No completed joined rides</p>
+        {% endif %}
+    </div>
+</div>
+
+
+<!-- ⭐ REVIEWS -->
+{% set rev_count = reviews_received|length %}
+<div class="expand-card" id="card-reviews">
+    <div class="expand-header" onclick="toggleCard('reviews')">
+        <div class="expand-title">⭐ Reviews Received</div>
+        <div class="expand-right">
+            <span class="expand-count">{{ rev_count }}</span>
+            <span class="expand-chevron" id="chev-reviews">▶</span>
+        </div>
+    </div>
+    <div class="expand-body" id="body-reviews" style="display:none">
+        {% if reviews_received %}
+            {% for r in reviews_received %}
+            <div class="review-card slide-up">
+                <div class="review-top">
+                    <div class="review-stars">{% for i in range(r.stars | int) %}⭐{% endfor %}</div>
+                    <span class="review-role-tag">{{ r.reviewer_role }}</span>
+                    <span class="review-date">{{ r.created_at }}</span>
+                </div>
+                {% if r.review_text %}<p class="review-text">"{{ r.review_text }}"</p>{% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-text">No reviews yet</p>
+        {% endif %}
+    </div>
 </div>
 
 
 <!-- 📄 DOCUMENTS -->
-<div class="card-box">
-    <h6>📄 Documents</h6>
-    <div class="doc-row">
-        <span>📄 Aadhar Card</span>
-        {% if verify and verify.aadhar == 'uploaded' %}<span class="badge-verified">✅ Verified</span>
-        {% else %}<span class="badge-pending">⏳ Pending</span>{% endif %}
+<div class="expand-card" id="card-docs">
+    <div class="expand-header" onclick="toggleCard('docs')">
+        <div class="expand-title">📄 Documents & Verification</div>
+        <div class="expand-right">
+            <span class="expand-chevron" id="chev-docs">▶</span>
+        </div>
     </div>
-    <div class="doc-row">
-        <span>📄 Driving License</span>
-        {% if verify and verify.license == 'uploaded' %}<span class="badge-verified">✅ Verified</span>
-        {% else %}<span class="badge-pending">⏳ Pending</span>{% endif %}
+    <div class="expand-body" id="body-docs" style="display:none">
+        <div class="doc-row"><span>📄 Aadhar Card</span>{% if verify and verify.aadhar == 'uploaded' %}<span class="badge-verified">✅ Verified</span>{% else %}<span class="badge-pending">⏳ Pending</span>{% endif %}</div>
+        <div class="doc-row"><span>📄 Driving License</span>{% if verify and verify.license == 'uploaded' %}<span class="badge-verified">✅ Verified</span>{% else %}<span class="badge-pending">⏳ Pending</span>{% endif %}</div>
+        <div class="doc-row"><span>📄 RC Book</span>{% if verify and verify.rc == 'uploaded' %}<span class="badge-verified">✅ Verified</span>{% else %}<span class="badge-pending">⏳ Pending</span>{% endif %}</div>
+        <div class="doc-row"><span>📄 Insurance</span>{% if verify and verify.insurance == 'uploaded' %}<span class="badge-verified">✅ Verified</span>{% else %}<span class="badge-pending">⏳ Pending</span>{% endif %}</div>
+        <a href="/verify" class="edit-contacts-btn ripple-btn">📤 Upload / Update Documents</a>
     </div>
-    <div class="doc-row">
-        <span>📄 RC Book</span>
-        {% if verify and verify.rc == 'uploaded' %}<span class="badge-verified">✅ Verified</span>
-        {% else %}<span class="badge-pending">⏳ Pending</span>{% endif %}
-    </div>
-    <div class="doc-row">
-        <span>📄 Insurance</span>
-        {% if verify and verify.insurance == 'uploaded' %}<span class="badge-verified">✅ Verified</span>
-        {% else %}<span class="badge-pending">⏳ Pending</span>{% endif %}
-    </div>
-    <a href="/verify" class="edit-contacts-btn">📤 Upload / Update Documents</a>
 </div>
 
 
 <!-- 📞 EMERGENCY CONTACTS -->
-<div class="card-box">
-    <h6>🚨 Emergency Contacts</h6>
-    {% if contacts %}
-    <div class="contact-row">
-        <span>👤 {{ contacts.name1 }}</span>
-        <a href="tel:{{ contacts.phone1 }}" class="call-btn">📞 Call</a>
+<div class="expand-card" id="card-contacts">
+    <div class="expand-header" onclick="toggleCard('contacts')">
+        <div class="expand-title">🚨 Emergency Contacts</div>
+        <div class="expand-right">
+            <span class="expand-chevron" id="chev-contacts">▶</span>
+        </div>
     </div>
-    <div class="contact-row">
-        <span>👤 {{ contacts.name2 }}</span>
-        <a href="tel:{{ contacts.phone2 }}" class="call-btn">📞 Call</a>
+    <div class="expand-body" id="body-contacts" style="display:none">
+        {% if contacts %}
+        <div class="contact-row"><span>👤 {{ contacts.name1 }}</span><a href="tel:{{ contacts.phone1 }}" class="call-btn">📞 Call</a></div>
+        <div class="contact-row"><span>👤 {{ contacts.name2 }}</span><a href="tel:{{ contacts.phone2 }}" class="call-btn">📞 Call</a></div>
+        {% else %}
+        <p class="empty-text">No emergency contacts saved</p>
+        {% endif %}
+        <a href="/emergency" class="edit-contacts-btn ripple-btn">✏️ Edit Contacts</a>
     </div>
-    {% else %}
-    <p class="empty-text">No emergency contacts saved</p>
-    {% endif %}
-    <a href="/emergency" class="edit-contacts-btn">✏️ Edit Contacts</a>
 </div>
+
+<!-- Legal + Footer -->
+<div class="profile-legal-row">
+    <a href="/legal?tab=tc">📜 Terms</a>
+    <span>·</span>
+    <a href="/legal?tab=pp">🔒 Privacy</a>
+</div>
+<div class="legal-footer" style="margin-bottom:80px">© 2026 Tripzy™ — All rights reserved.</div>
 
 
 <!-- 🔧 JS -->
 <script>
-    let trackingIntervals = {};
+// ══════════════════════════════
+// Expandable cards
+// ══════════════════════════════
+function toggleCard(id) {
+    const body = document.getElementById('body-' + id);
+    const chev = document.getElementById('chev-' + id);
+    const isOpen = body.style.display !== 'none';
 
-    function toggleTracking(rideId) {
-        let panel = document.getElementById('trackPanel' + rideId);
-        let btn   = document.getElementById('trackBtn' + rideId);
-        if (!panel) return;
-        if (panel.style.display === 'none') {
-            panel.style.display = 'block';
-            if (btn) btn.textContent = '⏹ Stop';
-            updateLiveLocation(rideId);
-            trackingIntervals[rideId] = setInterval(() => updateLiveLocation(rideId), 10000);
-        } else {
-            panel.style.display = 'none';
-            if (btn) btn.textContent = '📍 Track';
-            clearInterval(trackingIntervals[rideId]);
-            delete trackingIntervals[rideId];
-        }
+    if (isOpen) {
+        body.style.maxHeight = body.scrollHeight + 'px';
+        requestAnimationFrame(() => {
+            body.style.transition = 'max-height 0.3s ease, opacity 0.3s ease';
+            body.style.maxHeight = '0';
+            body.style.opacity = '0';
+        });
+        setTimeout(() => { body.style.display = 'none'; body.style.maxHeight = ''; body.style.opacity = ''; }, 300);
+        chev.textContent = '▶';
+    } else {
+        body.style.display = 'block';
+        body.style.maxHeight = '0';
+        body.style.opacity = '0';
+        requestAnimationFrame(() => {
+            body.style.transition = 'max-height 0.35s ease, opacity 0.3s ease';
+            body.style.maxHeight = body.scrollHeight + 'px';
+            body.style.opacity = '1';
+        });
+        setTimeout(() => { body.style.maxHeight = ''; }, 350);
+        chev.textContent = '▼';
     }
+}
 
-    function updateLiveLocation(rideId) {
-        let statusBar = document.getElementById('statusBar' + rideId);
-        if (!navigator.geolocation) { if (statusBar) statusBar.innerHTML = '🔴 GPS not supported'; return; }
-        navigator.geolocation.getCurrentPosition(
-            function(pos) {
-                let lat = pos.coords.latitude, lon = pos.coords.longitude;
-                let latEl = document.getElementById('lat' + rideId);
-                let lonEl = document.getElementById('lon' + rideId);
-                let updEl = document.getElementById('upd' + rideId);
-                if (latEl) latEl.textContent = lat.toFixed(5);
-                if (lonEl) lonEl.textContent = lon.toFixed(5);
-                if (updEl) { let n = new Date(); updEl.textContent = n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0'); }
-                let map = document.getElementById('liveMap' + rideId);
-                if (map) map.src = `https://www.google.com/maps?q=${lat},${lon}&output=embed&z=15`;
-                if (statusBar) { statusBar.innerHTML = '🟢 Live — Updates every 10s'; statusBar.style.color='#155724'; statusBar.style.background='#d4edda'; }
-            },
-            function() { if (statusBar) { statusBar.innerHTML = '🔴 Location denied'; statusBar.style.color='#721c24'; statusBar.style.background='#f8d7da'; } }
-        );
-    }
+// ══════════════════════════════
+// Live tracking
+// ══════════════════════════════
+let trackingIntervals = {};
 
-    function shareLocation(from, to) {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(pos) {
-                let link = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                window.open("https://wa.me/?text=" + encodeURIComponent(`📍 Traveling from ${from} to ${to}.\nTrack me: ${link}`));
-            });
-        }
+function toggleTracking(rideId) {
+    let panel = document.getElementById('trackPanel' + rideId);
+    let btn   = document.getElementById('trackBtn' + rideId);
+    if (!panel) return;
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        if (btn) btn.textContent = '⏹ Stop';
+        updateLiveLocation(rideId);
+        trackingIntervals[rideId] = setInterval(() => updateLiveLocation(rideId), 10000);
+    } else {
+        panel.style.display = 'none';
+        if (btn) btn.textContent = '📍 Track';
+        clearInterval(trackingIntervals[rideId]);
+        delete trackingIntervals[rideId];
     }
+}
 
-    function sendSOS(from, to) {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(pos) {
-                let link = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                {% if contacts and contacts.phone1 %}
-                window.open("https://wa.me/91{{ contacts.phone1 }}?text=" + encodeURIComponent(`🚨 EMERGENCY! ${from} to ${to}. Help: ${link}`));
-                {% endif %}
-                {% if contacts and contacts.phone2 %}
-                setTimeout(() => window.open("https://wa.me/91{{ contacts.phone2 }}?text=" + encodeURIComponent(`🚨 EMERGENCY! ${from} to ${to}. Help: ${link}`)), 1500);
-                {% endif %}
-                {% if not contacts %}alert("⚠️ No emergency contacts saved!");{% endif %}
-            });
-        }
+function updateLiveLocation(rideId) {
+    let statusBar = document.getElementById('statusBar' + rideId);
+    if (!navigator.geolocation) { if (statusBar) statusBar.innerHTML = '🔴 GPS not supported'; return; }
+    navigator.geolocation.getCurrentPosition(
+        function(pos) {
+            let lat = pos.coords.latitude, lon = pos.coords.longitude;
+            let latEl = document.getElementById('lat' + rideId);
+            let lonEl = document.getElementById('lon' + rideId);
+            let updEl = document.getElementById('upd' + rideId);
+            if (latEl) latEl.textContent = lat.toFixed(5);
+            if (lonEl) lonEl.textContent = lon.toFixed(5);
+            if (updEl) { let n = new Date(); updEl.textContent = n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0'); }
+            let map = document.getElementById('liveMap' + rideId);
+            if (map) map.src = `https://www.google.com/maps?q=${lat},${lon}&output=embed&z=15`;
+            if (statusBar) { statusBar.innerHTML='🟢 Live — 10s updates'; statusBar.style.color='#155724'; statusBar.style.background='#d4edda'; }
+        },
+        function() { if (statusBar) { statusBar.innerHTML='🔴 Location denied'; statusBar.style.color='#721c24'; statusBar.style.background='#f8d7da'; } }
+    );
+}
+
+function shareLocation(from, to) {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            let link = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+            window.open("https://wa.me/?text=" + encodeURIComponent(`📍 Traveling from ${from} to ${to}.\nTrack me: ${link}`));
+        });
     }
+}
+
+function sendSOS(from, to) {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            let link = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+            {% if contacts and contacts.phone1 %}
+            window.open("https://wa.me/91{{ contacts.phone1 }}?text=" + encodeURIComponent(`🚨 EMERGENCY! ${from} → ${to}. Help: ${link}`));
+            {% endif %}
+            {% if contacts and contacts.phone2 %}
+            setTimeout(() => window.open("https://wa.me/91{{ contacts.phone2 }}?text=" + encodeURIComponent(`🚨 EMERGENCY! ${from} → ${to}. Help: ${link}`)), 1500);
+            {% endif %}
+            {% if not contacts %}alert("⚠️ No emergency contacts saved!");{% endif %}
+        });
+    }
+}
+
+// ══════════════════════════════
+// Ripple effect
+// ══════════════════════════════
+document.querySelectorAll('.ripple-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        let ripple = document.createElement('span');
+        ripple.className = 'ripple-effect';
+        let rect = this.getBoundingClientRect();
+        ripple.style.left = (e.clientX - rect.left) + 'px';
+        ripple.style.top  = (e.clientY - rect.top) + 'px';
+        this.style.position = 'relative';
+        this.style.overflow = 'hidden';
+        this.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 600);
+    });
+});
 </script>
-
-<!-- Legal links at bottom of profile -->
-<div class="profile-legal-row">
-    <a href="/legal?tab=tc">📜 Terms & Conditions</a>
-    <span>·</span>
-    <a href="/legal?tab=pp">🔒 Privacy Policy</a>
-</div>
-
-<div class="legal-footer" style="margin-bottom:80px">
-    © 2026 Tripzy™ — All rights reserved.
-</div>
 
 {% endblock %}
