@@ -525,6 +525,7 @@ def ride_detail(id):
                 error=book_error,
                 driver=None,
                 driver_reviews=[],
+                driver_car=None,
                 can_review=False,
                 can_book=False
             )
@@ -543,8 +544,13 @@ def ride_detail(id):
         else:
             driver = None
         driver_reviews = conn.execute(
-            "SELECT * FROM reviews WHERE ride_id=? ORDER BY id DESC", (id,)
+            "SELECT stars, review_text, reviewer_role, created_at FROM reviews WHERE ride_id=? ORDER BY id DESC", (id,)
         ).fetchall()
+        # Fetch driver's car (never expose reviewer identity)
+        driver_car = conn.execute(
+            "SELECT name, model, color, plate FROM cars WHERE user_email=? LIMIT 1",
+            (ride_user_email,)
+        ).fetchone() if ride_user_email else None
         # Can review if completed and logged in
         if 'user_email' in session and ride['status'] == 'completed':
             existing = conn.execute(
@@ -591,6 +597,7 @@ def ride_detail(id):
 
     return render_template('ride_detail.html', ride=ride_e,
         driver=driver, driver_reviews=driver_reviews,
+        driver_car=driver_car,
         can_review=can_review, can_book=can_book,
         is_owner=is_owner, already_booked=already_booked)
 
