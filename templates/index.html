@@ -3,33 +3,33 @@
 {% block content %}
 
 <!-- 👋 HEADER -->
-<div class="home-header">
-    <h4>Welcome 👋</h4>
-    <p>Your rides & activity</p>
+<div class="home-header fade-in">
+    {% if session.get('user_name') %}
+    <h4>Welcome, {{ session.user_name }} 👋</h4>
+    {% else %}
+    <h4>Welcome to Tripzy 👋</h4>
+    {% endif %}
+    <p>Find or offer rides around you</p>
 </div>
 
 <!-- ⚡ QUICK ACTIONS -->
-<div class="quick-actions">
-
-    <a href="/post" class="action-card">
+<div class="quick-actions fade-in">
+    <a href="/post" class="action-card ripple-btn">
         <div>➕</div>
         <p>Offer Ride</p>
     </a>
-
-    <a href="/search" class="action-card">
+    <a href="/search" class="action-card ripple-btn">
         <div>🔍</div>
         <p>Find Ride</p>
     </a>
-
 </div>
 
-
-<!-- 🚗 YOUR RIDES -->
-<div class="card-box">
-
-    <h6>Your Rides</h6>
+<!-- 🚗 AVAILABLE RIDES -->
+<div class="card-box fade-in">
+    <h6>Available Rides</h6>
 
     {% if rides %}
+        <div class="ride-list" id="rideList">
         {% for ride in rides %}
         <a href="/ride/{{ ride.id }}" class="ride-card">
 
@@ -39,19 +39,38 @@
                 <span>{{ ride.to_loc }}</span>
             </div>
 
-            <div class="ride-info">
-                {{ ride.date }} | {{ ride.time }}
+            <div class="ride-info">{{ ride.date }} | {{ ride.time }}</div>
+
+            <!-- Status + countdown -->
+            <div style="margin:4px 0">
+                {% if ride.smart_status == 'started' %}
+                <span class="home-ride-status active-status">🟢 In Progress — Tap to contact driver</span>
+                {% elif ride.countdown %}
+                <span class="home-ride-status upcoming-status">⏱️ {{ ride.countdown }}</span>
+                {% endif %}
             </div>
 
             <div class="ride-bottom">
                 <span class="price">₹{{ ride.price }}</span>
-                <span>{{ ride.seats }} seats</span>
+                <span>{{ ride.seats }} seat{{ 's' if ride.seats != 1 else '' }}</span>
             </div>
 
         </a>
         {% endfor %}
+        </div>
     {% else %}
-        <p class="empty-text">No rides yet 🚗</p>
+        <!-- Skeleton loading placeholder while no rides -->
+        <div class="skeleton-card">
+            <div class="skeleton skeleton-line medium"></div>
+            <div class="skeleton skeleton-line short" style="margin-top:6px"></div>
+            <div class="skeleton skeleton-line full" style="margin-top:6px"></div>
+        </div>
+        <div class="skeleton-card">
+            <div class="skeleton skeleton-line medium"></div>
+            <div class="skeleton skeleton-line short" style="margin-top:6px"></div>
+            <div class="skeleton skeleton-line full" style="margin-top:6px"></div>
+        </div>
+        <p class="empty-text" style="margin-top:12px">No active rides right now 🚗</p>
     {% endif %}
 
 </div>
