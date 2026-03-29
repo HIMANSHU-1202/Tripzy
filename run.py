@@ -431,6 +431,18 @@ def ride_detail(id):
     ).fetchone()
 
     if request.method == 'POST':
+        # Prevent owner from booking their own ride
+        me_email = session.get('user_email', '')
+        if ride and dict(ride).get('user_email') == me_email:
+            ride_dict = dict(ride)
+            ride_dict['smart_status'] = get_smart_status(ride)
+            ride_dict['countdown'] = ''
+            conn.close()
+            return render_template('ride_detail.html',
+                ride=ride_dict,
+                error="You cannot book your own ride",
+                driver=None, driver_reviews=[], can_review=False, can_book=False)
+
         can_book, book_error = is_bookable(ride) if ride else (False, "Ride not found")
         if ride and can_book:
 
@@ -458,15 +470,30 @@ def ride_detail(id):
                 "SELECT last_insert_rowid()"
             ).fetchone()[0]
 
-            # 🔔 Create notification for logged-in user
+            # 🔔 Notify booker
             from flask import session as sess
-            if 'user_email' in sess:
+            booker_email = sess.get('user_email', '')
+            booker_name  = sess.get('user_name', 'Someone')
+            if booker_email:
                 conn.execute('''
                 INSERT INTO notifications (user_email, message, created_at)
                 VALUES (?, ?, ?)
                 ''', (
-                    sess['user_email'],
-                    f"🎟 Booking confirmed! {ride['from_loc']} → {ride['to_loc']} on {ride['date']}. Booking ID: #TRP{booking_id}",
+                    booker_email,
+                    f"🎟 Booking confirmed! {ride['from_loc']} → {ride['to_loc']} on {ride['date']}. ID: #TRP{booking_id}",
+                    booked_at
+                ))
+                conn.commit()
+
+            # 🔔 Notify ride owner about new booking
+            ride_owner = dict(ride).get('user_email', '')
+            if ride_owner and ride_owner != booker_email:
+                conn.execute('''
+                INSERT INTO notifications (user_email, message, created_at)
+                VALUES (?, ?, ?)
+                ''', (
+                    ride_owner,
+                    f"🎉 {booker_name} booked a seat on your ride: {ride['from_loc']} → {ride['to_loc']}",
                     booked_at
                 ))
                 conn.commit()
@@ -526,6 +553,18 @@ def ride_detail(id):
             ).fetchone()
             can_review = not existing
 
+    # Check ownership and existing booking
+    me_email = session.get('user_email', '')
+    is_owner = False
+    already_booked = False
+    if ride:
+        is_owner = dict(ride).get('user_email', '') == me_email
+        existing_booking = conn.execute(
+            "SELECT id FROM bookings WHERE ride_id=? AND user_email=?",
+            (id, me_email)
+        ).fetchone()
+        already_booked = existing_booking is not None
+
     conn.close()
     # Enrich with smart status + countdown
     ride_e = dict(ride) if ride else None
@@ -552,7 +591,8 @@ def ride_detail(id):
 
     return render_template('ride_detail.html', ride=ride_e,
         driver=driver, driver_reviews=driver_reviews,
-        can_review=can_review, can_book=can_book)
+        can_review=can_review, can_book=can_book,
+        is_owner=is_owner, already_booked=already_booked)
 
 
 # 🚀 START RIDE
@@ -633,16 +673,13 @@ def profile():
     all_joined_e  = enrich_rides(all_joined)
 
     # Filtered for display sections using smart_status
-    active_offered   = [r for r in all_offered_e if r['smart_status'] == 'started']
-    active_joined    = [r for r in all_joined_e  if r['smart_status'] == 'started']
-    upcoming_offered = [r for r in all_offered_e if r['smart_status'] == 'not_started']
-    upcoming_joined  = [r for r in all_joined_e  if r['smart_status'] == 'not_started']
-    upcoming         = upcoming_offered + upcoming_joined
-    # Tag each upcoming ride so template knows if it's offered or joined
-    for r in upcoming_offered:
-        r['is_offered'] = True
-    for r in upcoming_joined:
-        r['is_offered'] = False
+    active_offered    = [r for r in all_offered_e if r['smart_status'] == 'started']
+    active_joined     = [r for r in all_joined_e  if r['smart_status'] == 'started']
+    upcoming_offered  = [r for r in all_offered_e if r['smart_status'] == 'not_started']
+    upcoming_joined   = [r for r in all_joined_e  if r['smart_status'] == 'not_started']
+    completed_offered = [r for r in all_offered_e if r['smart_status'] == 'completed']
+    completed_joined  = [r for r in all_joined_e  if r['smart_status'] == 'completed']
+    upcoming          = upcoming_offered + upcoming_joined
 
     # Strictly user-specific — no fallback to other users' data
     contacts = conn.execute(
@@ -699,9 +736,11 @@ def profile():
         joined=all_joined_e,
         active_offered=active_offered,
         active_joined=active_joined,
-        upcoming=upcoming,
         upcoming_offered=upcoming_offered,
         upcoming_joined=upcoming_joined,
+        completed_offered=completed_offered,
+        completed_joined=completed_joined,
+        upcoming=upcoming,
         contacts=contacts,
         verify=verify,
         car=car,
