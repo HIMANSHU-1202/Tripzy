@@ -57,11 +57,10 @@
         src="https://www.google.com/maps?q={{ ride.from_loc }} to {{ ride.to_loc }}&output=embed"></iframe>
 </div>
 
-<!-- 👤 DRIVER INFO (only for non-owners) -->
+<!-- 👤 DRIVER INFO CARD (tap to expand) — only for non-owners -->
 {% if driver and not is_owner %}
-<div class="info-card slide-up">
-    <h6>👤 Driver</h6>
-    <div class="driver-row">
+<div class="driver-preview-card slide-up" onclick="document.getElementById('driverModal').style.display='flex'">
+    <div class="driver-preview-left">
         {% set dphoto = driver.photo or '' %}
         {% if dphoto %}
         <img src="{{ dphoto }}" class="driver-thumb" onerror="this.outerHTML='<div class=driver-thumb-placeholder>👤</div>'">
@@ -69,29 +68,92 @@
         <div class="driver-thumb-placeholder">👤</div>
         {% endif %}
         <div>
-            <div style="font-weight:600; font-size:15px">{{ driver.name }}</div>
-            {% set drating = driver.avg_rating or 0 %}
+            <div class="driver-preview-name">{{ driver.name }}</div>
+            {% set drating = driver.avg_rating or 0 | float %}
             {% if drating > 0 %}
-            <div style="font-size:13px; color:#888">⭐ {{ drating }} · {{ driver.total_ratings }} review{{ 's' if driver.total_ratings != 1 else '' }}</div>
+            <div class="driver-preview-rating">⭐ {{ drating }} · {{ driver.total_ratings }} review{{ 's' if driver.total_ratings != 1 else '' }}</div>
             {% else %}
-            <div style="font-size:12px; color:#aaa">No ratings yet</div>
+            <div class="driver-preview-rating" style="color:#aaa">No ratings yet</div>
             {% endif %}
-            {% if driver.bio %}<div style="font-size:12px; color:#777; margin-top:3px">{{ driver.bio }}</div>{% endif %}
+            {% if driver_car %}<div class="driver-preview-car">🚗 {{ driver_car.name }} · {{ driver_car.color }}</div>{% endif %}
         </div>
     </div>
-    {% if driver_reviews %}
-    <div style="margin-top:10px">
-        {% for r in driver_reviews[:2] %}
-        <div class="review-card">
-            <div class="review-top">
-                <div class="review-stars">{% for i in range(r.stars | int) %}⭐{% endfor %}</div>
-                <span class="review-date">{{ r.created_at }}</span>
+    <div class="driver-preview-arrow">›</div>
+</div>
+
+<!-- 🚗 DRIVER INFO MODAL -->
+<div class="modal-overlay" id="driverModal" style="display:none" onclick="if(event.target===this) this.style.display='none'">
+    <div class="driver-modal-card">
+
+        <div class="driver-modal-header">
+            <button onclick="document.getElementById('driverModal').style.display='none'" class="modal-close-btn">✕</button>
+            <div class="driver-modal-title">Driver Info</div>
+        </div>
+
+        <!-- Driver profile -->
+        <div class="driver-modal-profile">
+            {% if dphoto %}
+            <img src="{{ dphoto }}" class="driver-modal-photo" onerror="this.outerHTML='<div class=driver-thumb-placeholder style=width:72px;height:72px;font-size:32px>👤</div>'">
+            {% else %}
+            <div class="driver-thumb-placeholder" style="width:72px; height:72px; font-size:32px">👤</div>
+            {% endif %}
+            <div>
+                <div class="driver-modal-name">{{ driver.name }}</div>
+                {% if drating > 0 %}
+                <div class="driver-modal-rating">
+                    {% for i in range(drating | int) %}<span class="star-filled">★</span>{% endfor %}
+                    {% for i in range(5 - (drating | int)) %}<span class="star-empty">★</span>{% endfor %}
+                    <strong>{{ drating }}</strong>/5 · {{ driver.total_ratings }} review{{ 's' if driver.total_ratings != 1 else '' }}
+                </div>
+                {% else %}
+                <div style="font-size:12px; color:#aaa; margin-top:4px">No ratings yet</div>
+                {% endif %}
+                {% if driver.bio %}<div class="driver-modal-bio">{{ driver.bio }}</div>{% endif %}
+                {% if verify %}<span class="verified-badge" style="font-size:11px; margin-top:6px; display:inline-block">✅ Verified</span>{% endif %}
             </div>
-            {% if r.review_text %}<p class="review-text">"{{ r.review_text }}"</p>{% endif %}
         </div>
-        {% endfor %}
+
+        <!-- Car details -->
+        {% if driver_car %}
+        <div class="driver-modal-section">
+            <div class="driver-modal-section-title">🚗 Car Details</div>
+            <div class="driver-car-grid">
+                <div class="driver-car-item"><span class="driver-car-label">Name</span><span class="driver-car-val">{{ driver_car.name }}</span></div>
+                <div class="driver-car-item"><span class="driver-car-label">Model</span><span class="driver-car-val">{{ driver_car.model }}</span></div>
+                <div class="driver-car-item"><span class="driver-car-label">Color</span><span class="driver-car-val">{{ driver_car.color }}</span></div>
+                <div class="driver-car-item"><span class="driver-car-label">Plate</span><span class="driver-car-val plate-number">{{ driver_car.plate }}</span></div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Anonymous reviews -->
+        {% if driver_reviews %}
+        <div class="driver-modal-section">
+            <div class="driver-modal-section-title">⭐ What passengers say</div>
+            {% for r in driver_reviews %}
+            <div class="review-card-premium" style="margin-bottom:8px">
+                <div class="review-card-top">
+                    <div class="review-anon-avatar">🎟</div>
+                    <div>
+                        <div class="review-anon-label">Anonymous Passenger</div>
+                        <div class="review-stars-row">
+                            {% for i in range(r.stars | int) %}<span class="star-filled">★</span>{% endfor %}
+                            {% for i in range(5 - (r.stars | int)) %}<span class="star-empty">★</span>{% endfor %}
+                            <span class="review-score">{{ r.stars }}/5</span>
+                        </div>
+                    </div>
+                </div>
+                {% if r.review_text %}<p class="review-text-premium">"{{ r.review_text }}"</p>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="driver-modal-section" style="text-align:center; color:#aaa; padding:10px 0">
+            <p style="font-size:13px">No reviews yet for this driver</p>
+        </div>
+        {% endif %}
+
     </div>
-    {% endif %}
 </div>
 {% endif %}
 
