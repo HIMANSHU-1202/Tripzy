@@ -3029,3 +3029,384 @@ input:focus {
     content: '⚠️';
     font-size: 9px;
 }
+
+/* ===== ADD THESE TO BOTTOM OF style.css ===== */
+
+/* ══════════════════════════════════════
+   🎨 PREMIUM ANIMATIONS
+══════════════════════════════════════ */
+
+/* Page load fade-in */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rippleAnim {
+    from { width: 0; height: 0; opacity: 0.4; }
+    to   { width: 200px; height: 200px; opacity: 0; }
+}
+
+@keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.5; }
+}
+
+/* Fade-in utility */
+.fade-in {
+    animation: fadeInUp 0.5s ease both;
+}
+
+.fade-in:nth-child(2) { animation-delay: 0.08s; }
+.fade-in:nth-child(3) { animation-delay: 0.16s; }
+.fade-in:nth-child(4) { animation-delay: 0.24s; }
+
+/* Slide-up utility */
+.slide-up {
+    animation: slideInUp 0.35s ease both;
+}
+
+/* Ripple effect */
+.ripple-effect {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+    transform: translate(-50%, -50%);
+    animation: rippleAnim 0.6s linear;
+    pointer-events: none;
+}
+
+/* Hover lift for ride cards */
+.ride-card {
+    transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), box-shadow 0.22s ease;
+}
+.ride-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 10px 28px rgba(79,172,254,0.18);
+}
+
+/* Nav item tap animation */
+.nav-item {
+    transition: transform 0.15s ease;
+}
+.nav-item:active {
+    transform: scale(0.88);
+}
+
+/* Center nav button animation */
+.center-btn {
+    transition: transform 0.2s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s ease !important;
+}
+.center-btn:active {
+    transform: scale(0.9) !important;
+}
+
+/* Button press */
+.ripple-btn {
+    transition: transform 0.15s ease;
+    position: relative;
+    overflow: hidden;
+}
+.ripple-btn:active {
+    transform: scale(0.95);
+}
+
+/* Smooth tab content fade */
+.expand-body {
+    overflow: hidden;
+    transition: max-height 0.35s ease, opacity 0.3s ease;
+}
+
+/* ══════════════════════════════════════
+   📋 EXPANDABLE CARDS
+══════════════════════════════════════ */
+
+.expand-card {
+    background: white;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
+}
+
+.expand-card.has-items {
+    box-shadow: 0 4px 16px rgba(79,172,254,0.15);
+    border: 1px solid rgba(79,172,254,0.2);
+}
+
+.expand-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+
+.expand-header:active { background: #f8f9fc; }
+
+.expand-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.expand-title small {
+    font-size: 11px;
+    color: #aaa;
+    font-weight: 400;
+}
+
+.expand-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.expand-count {
+    background: #f1f3f6;
+    color: #888;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    min-width: 22px;
+    text-align: center;
+}
+
+.expand-count.count-active {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+}
+
+.expand-chevron {
+    font-size: 11px;
+    color: #aaa;
+    transition: transform 0.3s ease;
+}
+
+.expand-body {
+    padding: 0 12px 12px;
+}
+
+/* Colored dots */
+.expand-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.green-dot  { background: #28a745; }
+.blue-dot   { background: #4facfe; }
+.yellow-dot { background: #f39c12; }
+.purple-dot { background: #9b59b6; }
+.grey-dot   { background: #aaa; }
+
+/* ══════════════════════════════════════
+   🚗 RIDE ITEM CARDS (inside expandable)
+══════════════════════════════════════ */
+
+.ride-item-card {
+    background: #f8f9fc;
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 8px;
+    transition: transform 0.2s ease;
+}
+
+.ride-item-card:hover { transform: translateY(-2px); }
+
+.ride-item-card.completed-card {
+    opacity: 0.7;
+    background: #f5f5f5;
+}
+
+.ride-item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.ride-item-route {
+    font-weight: 600;
+    font-size: 14px;
+    color: #222;
+}
+
+.ride-item-meta {
+    font-size: 12px;
+    color: #888;
+    margin-top: 3px;
+}
+
+.ride-item-seats {
+    font-size: 12px;
+    color: #4facfe;
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+/* Action buttons row */
+.ride-item-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.ride-act-btn {
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: transform 0.15s ease;
+}
+
+.ride-act-btn:active { transform: scale(0.92); }
+
+.ride-act-btn.start  { background: linear-gradient(135deg,#4facfe,#00f2fe); color: white; }
+.ride-act-btn.end    { background: #28a745; color: white; }
+.ride-act-btn.track  { background: #e8f4fd; color: #0c5460; }
+.ride-act-btn.sos    { background: #f8d7da; color: #721c24; }
+.ride-act-btn.share  { background: #d4edda; color: #155724; }
+.ride-act-btn.msg    { background: #e8f4fd; color: #0c5460; }
+
+/* ══════════════════════════════════════
+   👑 OWNER / PASSENGER ACTIONS (ride detail)
+══════════════════════════════════════ */
+
+.owner-actions, .passenger-actions {
+    background: white;
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+
+.owner-actions-title, .passenger-actions-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 10px;
+}
+
+.owner-btns, .passenger-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.owner-btn, .pass-btn {
+    flex: 1;
+    min-width: calc(50% - 4px);
+    padding: 11px 8px;
+    border-radius: 12px;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+    transition: transform 0.15s ease;
+}
+
+.owner-btn:active, .pass-btn:active { transform: scale(0.95); }
+
+.owner-btn.start, .pass-btn.book { background: linear-gradient(135deg,#4facfe,#00f2fe); color: white; }
+.owner-btn.end   { background: #28a745; color: white; }
+.owner-btn.sos, .pass-btn.sos  { background: #f8d7da; color: #721c24; }
+.owner-btn.share, .pass-btn.share { background: #d4edda; color: #155724; }
+.owner-btn.invite { background: #25D366; color: white; }
+.owner-btn.completed { background: #e2e3e5; color: #555; cursor: default; }
+.pass-btn.msg     { background: #e8f4fd; color: #0c5460; }
+.pass-btn.details { background: #25D366; color: white; }
+
+/* Badges */
+.owner-badge  { background: #fff3cd; color: #856404; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.booked-badge { background: #d4edda; color: #155724; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+
+/* Ride hero card */
+.ride-hero-card {
+    background: linear-gradient(135deg, #4facfe 0%, #00c6ff 50%, #0072ff 100%);
+    border-radius: 20px;
+    padding: 24px 20px 20px;
+    margin-bottom: 12px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 8px 24px rgba(79,172,254,0.35);
+    animation: fadeInUp 0.4s ease both;
+}
+
+.ride-hero-route {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.hero-city {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.hero-arrow {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.85;
+}
+
+.hero-arrow-line {
+    width: 20px;
+    height: 2px;
+    background: rgba(255,255,255,0.7);
+    border-radius: 2px;
+}
+
+/* ══════════════════════════════════════
+   💀 SKELETON LOADING
+══════════════════════════════════════ */
+
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 10px;
+}
+
+.skeleton-card {
+    background: white;
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+}
+
+.skeleton-line {
+    height: 14px;
+    margin-bottom: 8px;
+}
+
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 65%; }
+.skeleton-line.full { width: 100%; }
