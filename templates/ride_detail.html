@@ -4,11 +4,20 @@
 
 {% if ride %}
 
-<!-- 🚗 Route -->
-<div class="ride-detail-card">
-    <div class="route-big">{{ ride.from_loc }} → {{ ride.to_loc }}</div>
-    <!-- Smart Status Badge -->
-    <div style="margin-top:8px">
+<!-- 🚗 ROUTE HERO -->
+<div class="ride-hero-card">
+    <div class="ride-hero-route">
+        <div class="hero-city">{{ ride.from_loc }}</div>
+        <div class="hero-arrow">
+            <div class="hero-arrow-line"></div>
+            <span>✈️</span>
+            <div class="hero-arrow-line"></div>
+        </div>
+        <div class="hero-city">{{ ride.to_loc }}</div>
+    </div>
+
+    <!-- Status Badge -->
+    <div style="margin-top:10px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap">
         {% if ride.smart_status == 'started' %}
             <span class="smart-badge active">🟢 In Progress</span>
         {% elif ride.smart_status == 'completed' %}
@@ -16,23 +25,25 @@
         {% else %}
             <span class="smart-badge upcoming">⏳ Upcoming</span>
         {% endif %}
+
+        {% if is_owner %}
+        <span class="owner-badge">👑 Your Ride</span>
+        {% elif already_booked %}
+        <span class="booked-badge">🎟 Booked</span>
+        {% endif %}
     </div>
 </div>
 
-<!-- ⏱️ COUNTDOWN TIMER -->
+<!-- ⏱️ COUNTDOWN -->
 {% if ride.countdown %}
 <div class="countdown-bar">
-    <span class="countdown-icon">
-        {% if ride.smart_status == 'started' %}🚗
-        {% elif ride.smart_status == 'completed' %}✅
-        {% else %}⏱️{% endif %}
-    </span>
+    <span class="countdown-icon">{% if ride.smart_status == 'started' %}🚗{% elif ride.smart_status == 'completed' %}✅{% else %}⏱️{% endif %}</span>
     <span class="countdown-text">{{ ride.countdown }}</span>
 </div>
 {% endif %}
 
-<!-- 📄 Ride Info -->
-<div class="info-card">
+<!-- 📄 RIDE INFO -->
+<div class="info-card slide-up">
     <div class="info-row"><span>📅 Date</span><span>{{ ride.date }}</span></div>
     <div class="info-row"><span>⏰ Time</span><span>{{ ride.time }}</span></div>
     <div class="info-row"><span>💺 Seats Left</span><span>{{ ride.seats }}</span></div>
@@ -40,31 +51,28 @@
 </div>
 
 <!-- 📍 MAP -->
-<div class="card-box">
+<div class="card-box slide-up">
     <h6>Route Map</h6>
     <iframe width="100%" height="200" style="border-radius:12px" loading="lazy" allowfullscreen
         src="https://www.google.com/maps?q={{ ride.from_loc }} to {{ ride.to_loc }}&output=embed"></iframe>
 </div>
 
-<!-- 👤 DRIVER INFO -->
-{% if driver %}
-<div class="info-card">
+<!-- 👤 DRIVER INFO (only for non-owners) -->
+{% if driver and not is_owner %}
+<div class="info-card slide-up">
     <h6>👤 Driver</h6>
     <div class="driver-row">
         {% set dphoto = driver.photo or '' %}
         {% if dphoto %}
-        <img src="{{ dphoto }}" class="driver-thumb"
-            onerror="this.outerHTML='<div class=driver-thumb-placeholder>👤</div>'">
+        <img src="{{ dphoto }}" class="driver-thumb" onerror="this.outerHTML='<div class=driver-thumb-placeholder>👤</div>'">
         {% else %}
         <div class="driver-thumb-placeholder">👤</div>
         {% endif %}
         <div>
-            <div style="font-weight:600">{{ driver.name }}</div>
+            <div style="font-weight:600; font-size:15px">{{ driver.name }}</div>
             {% set drating = driver.avg_rating or 0 %}
             {% if drating > 0 %}
-            <div style="font-size:13px; color:#888">
-                ⭐ {{ drating }} · {{ driver.total_ratings }} review{{ 's' if driver.total_ratings != 1 else '' }}
-            </div>
+            <div style="font-size:13px; color:#888">⭐ {{ drating }} · {{ driver.total_ratings }} review{{ 's' if driver.total_ratings != 1 else '' }}</div>
             {% else %}
             <div style="font-size:12px; color:#aaa">No ratings yet</div>
             {% endif %}
@@ -87,27 +95,27 @@
 </div>
 {% endif %}
 
-<!-- ⚙️ Ride Preferences -->
-<div class="info-card">
+<!-- ⚙️ PREFERENCES -->
+<div class="info-card slide-up">
     <h6>Ride Preferences</h6>
-    <div class="info-row"><span>🎵 Music</span><span>{{ ride.music }}</span></div>
-    <div class="info-row"><span>🚬 Smoking</span><span>{{ ride.smoking }}</span></div>
-    <div class="info-row"><span>🧳 Luggage</span><span>{{ ride.luggage }}</span></div>
-    <div class="info-row"><span>🚻 Stops</span><span>{{ ride.stops }}</span></div>
+    <div class="info-row"><span>🎵 Music</span><span>{{ ride.music or '—' }}</span></div>
+    <div class="info-row"><span>🚬 Smoking</span><span>{{ ride.smoking or '—' }}</span></div>
+    <div class="info-row"><span>🧳 Luggage</span><span>{{ ride.luggage or '—' }}</span></div>
+    <div class="info-row"><span>🚻 Stops</span><span>{{ ride.stops or '—' }}</span></div>
 </div>
 
-<!-- 🧠 Smart Features -->
-<div class="info-card">
+<!-- 🧠 SMART FEATURES -->
+<div class="info-card slide-up">
     <h6>Smart Features</h6>
-    <div class="info-row"><span>👤 Gender</span><span>{{ ride.gender }}</span></div>
-    <div class="info-row"><span>❄️ AC</span><span>{{ ride.ac }}</span></div>
-    <div class="info-row"><span>🐶 Pets</span><span>{{ ride.pets }}</span></div>
-    <div class="info-row"><span>🔌 Charging</span><span>{{ ride.charging }}</span></div>
+    <div class="info-row"><span>👤 Gender</span><span>{{ ride.gender or '—' }}</span></div>
+    <div class="info-row"><span>❄️ AC</span><span>{{ ride.ac or '—' }}</span></div>
+    <div class="info-row"><span>🐶 Pets</span><span>{{ ride.pets or '—' }}</span></div>
+    <div class="info-row"><span>🔌 Charging</span><span>{{ ride.charging or '—' }}</span></div>
 </div>
 
 <!-- ✍️ LEAVE A REVIEW -->
 {% if can_review %}
-<div class="info-card">
+<div class="info-card slide-up">
     <h6>⭐ Leave a Review</h6>
     <form method="POST" action="/review/{{ ride.id }}">
         <input type="hidden" name="reviewee_email" value="{{ driver.email if driver else '' }}">
@@ -123,17 +131,22 @@
                 style="width:100%; padding:10px; border-radius:10px; border:1px solid #ddd;
                 font-family:inherit; font-size:13px; resize:none; height:80px"></textarea>
         </div>
-        <button class="submit-btn">📤 Submit Review</button>
+        <button class="submit-btn ripple-btn">📤 Submit Review</button>
     </form>
 </div>
 {% endif %}
 
-<!-- 🚀 BOOKING SECTION -->
+
+<!-- ══════════════════════════════
+     🚀 ACTION SECTION
+     Different for owner vs passenger
+══════════════════════════════ -->
 <div class="bottom-action">
 
     {% if booked %}
+        <!-- ✅ JUST BOOKED -->
         <div class="success-msg" style="margin-bottom:10px">✅ Seat Booked Successfully!</div>
-        <button class="book-btn"
+        <button class="book-btn ripple-btn"
             onclick="document.getElementById('receiptModal').style.display='flex'"
             style="background:linear-gradient(135deg,#4facfe,#00f2fe); margin-bottom:8px">
             🎟 View Receipt
@@ -142,43 +155,86 @@
             target="_blank" class="share-btn">📤 Share Receipt on WhatsApp</a>
 
     {% elif error %}
-        <!-- Smart error — blocked booking -->
         <div class="smart-block-msg">
             <div class="smart-block-icon">
-                {% if 'started' in error %}🚗
+                {% if 'own' in error %}👑
+                {% elif 'started' in error %}🚗
                 {% elif 'completed' in error %}✅
                 {% else %}❌{% endif %}
             </div>
             <div>
-                <div style="font-weight:600; font-size:14px">Can't Book This Ride</div>
+                <div style="font-weight:600; font-size:14px">Can't Book</div>
                 <div style="font-size:13px; color:#888; margin-top:3px">{{ error }}</div>
+            </div>
+        </div>
+
+    {% elif is_owner %}
+        <!-- 👑 OWNER ACTIONS -->
+        <div class="owner-actions">
+            <div class="owner-actions-title">👑 Your Ride — Manage</div>
+            <div class="owner-btns">
+                {% if ride.smart_status == 'not_started' %}
+                <a href="/start/{{ ride.id }}" class="owner-btn start ripple-btn">▶ Start Ride</a>
+                {% elif ride.smart_status == 'started' %}
+                <a href="/end/{{ ride.id }}" class="owner-btn end ripple-btn">⏹ End Ride</a>
+                {% else %}
+                <div class="owner-btn completed">✅ Completed</div>
+                {% endif %}
+
+                <button onclick="sendSOS('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="owner-btn sos ripple-btn">🚨 SOS</button>
+                <button onclick="shareLiveLocation('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="owner-btn share ripple-btn">📍 Share Location</button>
+                <a href="https://wa.me/?text=Join my ride from {{ ride.from_loc }} to {{ ride.to_loc }} on {{ ride.date }} at {{ ride.time }}. Price ₹{{ ride.price }}. Book on Tripzy!"
+                    target="_blank" class="owner-btn invite ripple-btn">📤 Invite Passengers</a>
+            </div>
+        </div>
+
+    {% elif already_booked %}
+        <!-- 🎟 ALREADY BOOKED — PASSENGER ACTIONS -->
+        <div class="passenger-actions">
+            <div class="passenger-actions-title">🎟 You're on this ride</div>
+            <div class="passenger-btns">
+                {% if ride.user_email %}
+                <a href="/chat/{{ ride.user_email }}?ride_id={{ ride.id }}" class="pass-btn msg ripple-btn">💬 Message Driver</a>
+                {% endif %}
+                <button onclick="sendSOS('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="pass-btn sos ripple-btn">🚨 SOS</button>
+                <button onclick="shareLiveLocation('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="pass-btn share ripple-btn">📍 Share Location</button>
+                <a href="https://wa.me/?text=I'm on a ride from {{ ride.from_loc }} to {{ ride.to_loc }} on {{ ride.date }}. Track via Tripzy!"
+                    target="_blank" class="pass-btn details ripple-btn">📤 Share Details</a>
             </div>
         </div>
 
     {% elif ride.smart_status == 'completed' %}
         <div class="smart-block-msg">
             <div class="smart-block-icon">✅</div>
-            <div>
-                <div style="font-weight:600; font-size:14px">Ride Completed</div>
-                <div style="font-size:13px; color:#888; margin-top:3px">This ride has already ended</div>
-            </div>
+            <div><div style="font-weight:600">Ride Completed</div><div style="font-size:13px; color:#888">This ride has already ended</div></div>
         </div>
 
     {% elif ride.smart_status == 'started' %}
-        <div class="smart-block-msg">
-            <div class="smart-block-icon">🚗</div>
-            <div>
-                <div style="font-weight:600; font-size:14px">Ride In Progress</div>
-                <div style="font-size:13px; color:#888; margin-top:3px">Booking is no longer available</div>
+        <!-- 🚗 RIDE IN PROGRESS — can still contact driver -->
+        <div class="info-card" style="margin-bottom:8px">
+            <div style="text-align:center; padding:6px 0">
+                <div style="font-size:15px; font-weight:600; color:#155724">🚗 Ride In Progress</div>
+                <div style="font-size:12px; color:#888; margin-top:4px">Booking closed — contact driver to join</div>
             </div>
         </div>
+        {% if ride.user_email %}
+        <a href="/chat/{{ ride.user_email }}?ride_id={{ ride.id }}" class="book-btn ripple-btn"
+            style="display:block; text-align:center; text-decoration:none; background:linear-gradient(135deg,#4facfe,#00f2fe); margin-bottom:8px">
+            💬 Contact Driver to Join
+        </a>
+        {% endif %}
+        <a href="https://wa.me/?text=Ride from {{ ride.from_loc }} to {{ ride.to_loc }} on {{ ride.date }} at {{ ride.time }}. Price ₹{{ ride.price }}"
+            target="_blank" class="share-btn">📤 Share on WhatsApp</a>
 
     {% else %}
+        <!-- 🎟 BOOK SEAT — normal passenger -->
         <div style="display:flex; gap:8px; margin-bottom:8px">
             <form method="POST" style="flex:2">
-                <button class="book-btn" style="width:100%">Book Seat</button>
+                <button class="book-btn ripple-btn" style="width:100%">🎟 Book Seat</button>
             </form>
-            <a href="/chat/Driver_{{ ride.id }}?ride_id={{ ride.id }}" class="msg-driver-btn">💬 Message</a>
+            {% if ride.user_email %}
+            <a href="/chat/{{ ride.user_email }}?ride_id={{ ride.id }}" class="msg-driver-btn ripple-btn">💬 Message</a>
+            {% endif %}
         </div>
         <a href="https://wa.me/?text=Ride from {{ ride.from_loc }} to {{ ride.to_loc }} on {{ ride.date }} at {{ ride.time }}. Price ₹{{ ride.price }}"
             target="_blank" class="share-btn">📤 Share on WhatsApp</a>
@@ -186,10 +242,10 @@
 
 </div>
 
+
 <!-- 🎟 RECEIPT MODAL -->
 {% if booked %}
-<div class="modal-overlay" id="receiptModal" style="display:flex"
-    onclick="if(event.target===this) this.style.display='none'">
+<div class="modal-overlay" id="receiptModal" style="display:flex" onclick="if(event.target===this) this.style.display='none'">
     <div class="receipt-modal-card">
         <div class="receipt-header">
             <div class="receipt-check">✅</div>
@@ -211,13 +267,44 @@
             <a href="https://wa.me/?text=🎟 Booking Confirmed!%0AID: %23TRP{{ booking_id }}%0AFrom: {{ ride.from_loc }}%0ATo: {{ ride.to_loc }}%0ADate: {{ ride.date }} at {{ ride.time }}%0AAmount: ₹{{ ride.price }}%0ABooked via Tripzy 🚗"
                 target="_blank" class="receipt-share-btn">📤 Share on WhatsApp</a>
             <button onclick="document.getElementById('receiptModal').style.display='none'"
-                style="width:100%; padding:10px; border:none; background:#f1f3f6; border-radius:10px; font-size:13px; cursor:pointer">
-                ✕ Close
-            </button>
+                style="width:100%; padding:10px; border:none; background:#f1f3f6; border-radius:10px; font-size:13px; cursor:pointer">✕ Close</button>
         </div>
     </div>
 </div>
 {% endif %}
+
+<script>
+function shareLiveLocation(from, to) {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            let link = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+            window.open("https://wa.me/?text=" + encodeURIComponent(`📍 Live location: ${from} → ${to}\n${link}`));
+        });
+    }
+}
+
+function sendSOS(from, to) {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            let link = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+            window.open("https://wa.me/?text=" + encodeURIComponent(`🚨 EMERGENCY! Ride ${from} → ${to}. Location: ${link}`));
+        });
+    }
+}
+
+// Ripple effect
+document.querySelectorAll('.ripple-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        let ripple = document.createElement('span');
+        ripple.className = 'ripple-effect';
+        let rect = this.getBoundingClientRect();
+        ripple.style.left = (e.clientX - rect.left) + 'px';
+        ripple.style.top  = (e.clientY - rect.top) + 'px';
+        this.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 600);
+    });
+});
+</script>
 
 {% else %}
 <div class="empty-box"><p>Ride not found 🚫</p></div>
