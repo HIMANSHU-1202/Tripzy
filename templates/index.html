@@ -24,7 +24,45 @@
     </a>
 </div>
 
-<!-- 🚗 AVAILABLE RIDES -->
+<!-- 🗓️ MY UPCOMING RIDES (only for logged-in user) -->
+{% if session.get('user_email') and my_upcoming_rides %}
+<div class="card-box fade-in" style="margin-bottom:14px">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+        <h6 style="margin:0">🗓️ My Upcoming Rides</h6>
+        <a href="/profile" style="font-size:12px; color:#4facfe; text-decoration:none">See all →</a>
+    </div>
+    <div class="ride-list">
+        {% for ride in my_upcoming_rides %}
+        <a href="/ride/{{ ride.id }}" class="ride-card" style="border-left: 3px solid #4facfe;">
+            <div class="route">
+                <span>{{ ride.from_loc }}</span>
+                <span>→</span>
+                <span>{{ ride.to_loc }}</span>
+            </div>
+            <div class="ride-info">{{ ride.date }} | {{ ride.time }}</div>
+            <div style="margin:4px 0">
+                {% if ride.smart_status == 'started' %}
+                <span class="home-ride-status active-status">🟢 In Progress</span>
+                {% elif ride.countdown %}
+                <span class="home-ride-status upcoming-status">⏱️ {{ ride.countdown }}</span>
+                {% endif %}
+                {% if ride.role == 'driver' %}
+                <span style="font-size:10px; background:#e8f4fd; color:#0c5460; padding:2px 7px; border-radius:8px; margin-left:4px">👑 Driver</span>
+                {% else %}
+                <span style="font-size:10px; background:#d4edda; color:#155724; padding:2px 7px; border-radius:8px; margin-left:4px">🎟 Passenger</span>
+                {% endif %}
+            </div>
+            <div class="ride-bottom">
+                <span class="price">₹{{ ride.price }}</span>
+                <span>{{ ride.seats }} seat{{ 's' if ride.seats != 1 else '' }}</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- 🚗 AVAILABLE RIDES (all users, excluding own) -->
 <div class="card-box fade-in">
     <h6>Available Rides</h6>
 
