@@ -12,13 +12,13 @@
     </div>
 
     <div class="chat-header-info">
-        <div class="chat-header-name">{{ display_name or user }}</div>
+        <div class="chat-header-name">{{ display_name }}</div>
         <div class="chat-header-sub">Tripzy User</div>
     </div>
 </div>
 
 
-<!-- RIDE CONTEXT BANNER (if chat started from a ride) -->
+<!-- RIDE CONTEXT BANNER -->
 {% if ride_context %}
 <a href="/ride/{{ ride_context.id }}" class="ride-context-banner">
     <span>🚗</span>
@@ -30,31 +30,58 @@
 </a>
 {% endif %}
 
+<!-- BLOCKED BANNER -->
+{% if chat_blocked %}
+<div class="chat-blocked-banner">
+    🔒 This ride has ended — messaging is disabled
+</div>
+{% endif %}
+
 
 <!-- MESSAGES -->
 <div class="chat-messages-box" id="chatBox">
 
     {% if messages %}
+        {% set prev_date = namespace(val='') %}
         {% for msg in messages %}
-        <div class="chat-msg-wrapper {{ 'right' if msg.sender == me else 'left' }}">
-            {% if msg.sender != me %}
-            <div class="chat-msg-avatar">{{ msg.sender[0] | upper }}</div>
+
+            <!-- Date separator -->
+            {% set msg_date = msg.time %}
+            {% if loop.first %}
+            <div class="chat-date-sep">Today</div>
             {% endif %}
 
-            <div class="chat-bubble-wrap">
-                <div class="chat-bubble-msg {{ 'sent' if msg.sender == me else 'received' }}">
-                    {{ msg.message }}
+            <div class="chat-msg-wrapper {{ 'right' if msg.sender == me else 'left' }}">
+
+                {% if msg.sender != me %}
+                <div class="chat-msg-avatar">{{ (display_name or user)[0] | upper }}</div>
+                {% endif %}
+
+                <div class="chat-bubble-wrap">
+                    <!-- Sender name (only for received messages) -->
+                    {% if msg.sender != me %}
+                    <div class="chat-sender-name">{{ display_name }}</div>
+                    {% endif %}
+
+                    <div class="chat-bubble-msg {{ 'sent' if msg.sender == me else 'received' }}">
+                        {{ msg.message }}
+                        {% if msg.sender == me %}
+                        <span class="msg-read-tick">{{ '✓✓' if msg.is_read else '✓' }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="chat-msg-time">{{ msg.time }}</div>
                 </div>
-                <div class="chat-msg-time">{{ msg.time }}</div>
+
             </div>
-        </div>
         {% endfor %}
     {% else %}
         <div class="chat-no-msgs">
             <div style="font-size:40px">👋</div>
-            <p>Start a conversation with <strong>{{ display_name or user }}</strong></p>
+            <p>Start a conversation with <strong>{{ display_name }}</strong></p>
             {% if ride_context %}
-            <p style="font-size:12px; color:#aaa">About: {{ ride_context.from_loc }} → {{ ride_context.to_loc }}</p>
+            <p style="font-size:12px; color:#aaa; margin-top:4px">
+                About: {{ ride_context.from_loc }} → {{ ride_context.to_loc }}
+            </p>
             {% endif %}
         </div>
     {% endif %}
@@ -62,17 +89,19 @@
 </div>
 
 
-<!-- QUICK REPLIES (only if no messages yet) -->
-{% if not messages and ride_context %}
+<!-- QUICK REPLIES (first message only) -->
+{% if not messages and ride_context and not chat_blocked %}
 <div class="quick-replies" id="quickReplies">
     <button onclick="fillMsg('Is this ride still available?')" class="quick-reply-btn">Is this ride still available?</button>
-    <button onclick="fillMsg('What is the exact pickup point?')" class="quick-reply-btn">What is the pickup point?</button>
+    <button onclick="fillMsg('What is the exact pickup point?')" class="quick-reply-btn">Pickup point?</button>
     <button onclick="fillMsg('Can I bring luggage?')" class="quick-reply-btn">Can I bring luggage?</button>
+    <button onclick="fillMsg('What time does the ride leave?')" class="quick-reply-btn">What time exactly?</button>
 </div>
 {% endif %}
 
 
-<!-- INPUT BAR -->
+<!-- INPUT BAR (hidden if blocked) -->
+{% if not chat_blocked %}
 <div class="chat-input-area">
     <form method="POST" id="chatForm">
         <input type="hidden" name="ride_id" value="{{ ride_id or '' }}">
@@ -80,12 +109,11 @@
             <input type="text" name="message" id="msgInput"
                 placeholder="Type a message..."
                 autocomplete="off" required>
-            <button type="submit" class="chat-send-btn" id="sendBtn">
-                <span>➤</span>
-            </button>
+            <button type="submit" class="chat-send-btn ripple-btn" id="sendBtn">➤</button>
         </div>
     </form>
 </div>
+{% endif %}
 
 
 <script>
@@ -97,7 +125,7 @@
     const msgInput = document.getElementById('msgInput');
     if (msgInput) msgInput.focus();
 
-    // Send on Enter key
+    // Send on Enter
     if (msgInput) {
         msgInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -107,23 +135,30 @@
         });
     }
 
-    // Quick reply fill
+    // Quick reply
     function fillMsg(text) {
         if (msgInput) {
             msgInput.value = text;
             msgInput.focus();
-            document.getElementById('quickReplies').style.display = 'none';
+            const qr = document.getElementById('quickReplies');
+            if (qr) qr.style.display = 'none';
         }
     }
 
-    // Animate send button
-    const sendBtn = document.getElementById('sendBtn');
-    if (sendBtn) {
-        sendBtn.addEventListener('click', function() {
-            this.style.transform = 'scale(0.9)';
-            setTimeout(() => this.style.transform = 'scale(1)', 150);
+    // Ripple
+    document.querySelectorAll('.ripple-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            let r = document.createElement('span');
+            r.className = 'ripple-effect';
+            let rect = this.getBoundingClientRect();
+            r.style.left = (e.clientX - rect.left) + 'px';
+            r.style.top  = (e.clientY - rect.top) + 'px';
+            this.style.position = 'relative';
+            this.style.overflow = 'hidden';
+            this.appendChild(r);
+            setTimeout(() => r.remove(), 600);
         });
-    }
+    });
 </script>
 
 {% endblock %}
