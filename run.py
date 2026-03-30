@@ -5,22 +5,27 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 app.secret_key = 'tripzy_secret_2024'
 
-# 🔔 Inject notif_count into all templates
+# 🔔 Inject notif_count + unread_msgs into all templates
 @app.context_processor
 def inject_notif_count():
     from flask import session
     if 'user_email' in session:
         try:
-            conn = get_db()
-            count = conn.execute(
+            conn    = get_db()
+            me      = session['user_email']
+            notifs  = conn.execute(
                 "SELECT COUNT(*) FROM notifications WHERE user_email=? AND is_read=0",
-                (session['user_email'],)
+                (me,)
+            ).fetchone()[0]
+            unread_msgs = conn.execute(
+                "SELECT COUNT(*) FROM messages WHERE receiver=? AND is_read=0",
+                (me,)
             ).fetchone()[0]
             conn.close()
-            return dict(notif_count=count)
+            return dict(notif_count=notifs, unread_msgs=unread_msgs)
         except:
             pass
-    return dict(notif_count=0)
+    return dict(notif_count=0, unread_msgs=0)
 
 
 # 📦 DATABASE CONNECTION
@@ -75,14 +80,34 @@ def init_db():
         receiver TEXT,
         message TEXT,
         time TEXT,
-        ride_id INTEGER
+        ride_id INTEGER,
+        is_read INTEGER DEFAULT 0
     )
     ''')
-    # Safe migration for existing messages table
-    try:
-        cur.execute("ALTER TABLE messages ADD COLUMN ride_id INTEGER")
-    except:
-        pass
+
+    # 💬 Chats table — one conversation per (user1, user2, ride)
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS chats (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ride_id INTEGER,
+        user1_email TEXT,
+        user2_email TEXT,
+        created_at TEXT,
+        is_archived INTEGER DEFAULT 0
+    )
+    ''')
+
+    # Safe migrations
+    safe_chat_alters = [
+        "ALTER TABLE messages ADD COLUMN ride_id INTEGER",
+        "ALTER TABLE messages ADD COLUMN is_read INTEGER DEFAULT 0",
+        "ALTER TABLE messages ADD COLUMN chat_id INTEGER",
+    ]
+    for sql in safe_chat_alters:
+        try:
+            cur.execute(sql)
+        except:
+            pass
 
     # 📞 Emergency Contacts
     cur.execute('''
@@ -327,26 +352,6 @@ def post_ride():
         ))
 
         conn.commit()
-
-        # 🔔 Notify all other users about new ride
-        try:
-            all_users = conn.execute(
-                "SELECT email FROM users WHERE email != ?",
-                (session.get('user_email', ''),)
-            ).fetchall()
-            now_str = datetime.now().strftime("%d %b, %I:%M %p")
-            for u in all_users:
-                conn.execute('''
-                INSERT INTO notifications (user_email, message, created_at)
-                VALUES (?, ?, ?)
-                ''', (
-                    u['email'],
-                    f"🚗 New ride posted: {request.form['from']} → {request.form['to']} on {request.form['date']}",
-                    now_str
-                ))
-            conn.commit()
-        except:
-            pass
 
         conn.close()
         return redirect(url_for('index'))
@@ -791,111 +796,138 @@ def rate(id):
 # 💬 INBOX
 @app.route('/inbox')
 def inbox():
-    conn = get_db()
-    me = session.get('user_email', '')
+    if 'user_email' not in session:
+        return redirect(url_for('login'))
 
-    messages = conn.execute(
-        "SELECT * FROM messages WHERE sender=? OR receiver=? ORDER BY id DESC",
-        (me, me)
-    ).fetchall()
+    conn = get_db()
+    me   = session.get('user_email', '')
+
+    # Get all unique conversations for this user
+    # Group by (other_email, ride_id) so each ride has one thread
+    raw = conn.execute('''
+        SELECT
+            CASE WHEN sender=? THEN receiver ELSE sender END AS other_email,
+            ride_id,
+            message,
+            time,
+            MAX(id) as last_id,
+            SUM(CASE WHEN receiver=? AND is_read=0 THEN 1 ELSE 0 END) as unread
+        FROM messages
+        WHERE sender=? OR receiver=?
+        GROUP BY other_email, ride_id
+        ORDER BY last_id DESC
+    ''', (me, me, me, me)).fetchall()
 
     chats = []
-    seen  = set()
-
-    for msg in messages:
-        other = msg['receiver'] if msg['sender'] == me else msg['sender']
-        if other not in seen:
-            # Get ride info if available
-            ride_info = None
-            if msg['ride_id']:
-                ride_info = conn.execute(
-                    "SELECT from_loc, to_loc FROM rides WHERE id=?",
-                    (msg['ride_id'],)
-                ).fetchone()
-            chats.append({
-                "user":      other,
-                "message":   msg['message'],
-                "time":      msg['time'],
-                "ride_id":   msg['ride_id'],
-                "ride_info": ride_info
-            })
-            seen.add(other)
-
-    # Resolve real names for display
-    for chat in chats:
-        other_user = conn.execute(
-            "SELECT name FROM users WHERE email=?", (chat['user'],)
+    for row in raw:
+        other_email = row['other_email']
+        other_user  = conn.execute(
+            "SELECT name FROM users WHERE email=?", (other_email,)
         ).fetchone()
-        chat['display_name'] = other_user['name'] if other_user else chat['user'].split('@')[0]
+        display_name = other_user['name'] if other_user else other_email.split('@')[0]
+
+        ride_info = None
+        if row['ride_id']:
+            ride_info = conn.execute(
+                "SELECT from_loc, to_loc FROM rides WHERE id=?",
+                (row['ride_id'],)
+            ).fetchone()
+
+        chats.append({
+            'user':         other_email,
+            'display_name': display_name,
+            'message':      row['message'],
+            'time':         row['time'],
+            'ride_id':      row['ride_id'],
+            'ride_info':    ride_info,
+            'unread':       row['unread'] or 0
+        })
+
+    # Total unread count
+    total_unread = sum(c['unread'] for c in chats)
 
     conn.close()
-    return render_template('inbox.html', chats=chats, me=me)
+    return render_template('inbox.html', chats=chats, me=me, total_unread=total_unread)
 
 
 # 💬 CHAT
 @app.route('/chat/<user>', methods=['GET', 'POST'])
 def chat(user):
-    conn  = get_db()
-    me    = session.get('user_email', '')
-    rid   = request.args.get('ride_id') or request.form.get('ride_id')
+    if 'user_email' not in session:
+        return redirect(url_for('login'))
 
-    if request.method == 'POST':
+    conn = get_db()
+    me   = session.get('user_email', '')
+    rid  = request.args.get('ride_id') or request.form.get('ride_id')
+
+    # Check ride is not completed/archived — block messaging if so
+    ride_context = None
+    chat_blocked = False
+    if rid:
+        ride_context = conn.execute("SELECT * FROM rides WHERE id=?", (rid,)).fetchone()
+        if ride_context:
+            smart = get_smart_status(ride_context)
+            if smart == 'completed':
+                chat_blocked = True
+
+    if request.method == 'POST' and not chat_blocked:
         msg_text = request.form.get('message', '').strip()
-        if msg_text:
+        if msg_text and user != me:
+            now_time = datetime.now().strftime("%H:%M")
+            now_full = datetime.now().strftime("%d %b, %I:%M %p")
+
             conn.execute('''
-            INSERT INTO messages (sender, receiver, message, time, ride_id)
-            VALUES (?, ?, ?, ?, ?)
-            ''', (
-                me,
-                user,
-                msg_text,
-                datetime.now().strftime("%H:%M"),
-                rid
-            ))
+            INSERT INTO messages (sender, receiver, message, time, ride_id, is_read)
+            VALUES (?, ?, ?, ?, ?, 0)
+            ''', (me, user, msg_text, now_time, rid))
             conn.commit()
 
-            # 🔔 Notify receiver only (not self)
-            try:
-                receiver_email = user  # user in URL is always the other person's email
-                if receiver_email and receiver_email != me:
-                    conn.execute('''
-                    INSERT INTO notifications (user_email, message, created_at)
-                    VALUES (?, ?, ?)
-                    ''', (
-                        receiver_email,
-                        f"💬 New message from {session.get('user_name', me.split('@')[0])}",
-                        datetime.now().strftime("%d %b, %I:%M %p")
-                    ))
-                    conn.commit()
-            except:
-                pass
+            # 🔔 Notify receiver only
+            if user and user != me:
+                sender_name = session.get('user_name', me.split('@')[0])
+                ride_label  = f" on ride {ride_context['from_loc']} → {ride_context['to_loc']}" if ride_context else ""
+                conn.execute('''
+                INSERT INTO notifications (user_email, message, is_read, created_at)
+                VALUES (?, ?, 0, ?)
+                ''', (user, f"💬 {sender_name}: {msg_text[:40]}{ride_label}", now_full))
+                conn.commit()
 
         return redirect(url_for('chat', user=user, ride_id=rid or ''))
 
-    messages = conn.execute('''
-    SELECT * FROM messages
-    WHERE (sender=? AND receiver=?) OR (sender=? AND receiver=?)
-    ORDER BY id
-    ''', (me, user, user, me)).fetchall()
+    # Mark messages as read
+    conn.execute('''
+        UPDATE messages SET is_read=1
+        WHERE receiver=? AND sender=? AND (ride_id=? OR (ride_id IS NULL AND ? IS NULL))
+    ''', (me, user, rid, rid))
+    conn.commit()
 
-    # Get ride context if provided
-    ride_context = None
+    # Fetch messages for this specific conversation (same ride_id)
     if rid:
-        ride_context = conn.execute(
-            "SELECT * FROM rides WHERE id=?", (rid,)
-        ).fetchone()
+        messages = conn.execute('''
+            SELECT * FROM messages
+            WHERE ((sender=? AND receiver=?) OR (sender=? AND receiver=?))
+            AND ride_id=?
+            ORDER BY id
+        ''', (me, user, user, me, rid)).fetchall()
+    else:
+        messages = conn.execute('''
+            SELECT * FROM messages
+            WHERE ((sender=? AND receiver=?) OR (sender=? AND receiver=?))
+            AND (ride_id IS NULL OR ride_id='')
+            ORDER BY id
+        ''', (me, user, user, me)).fetchall()
 
-    # Resolve display name of the other user
-    other_user = conn.execute(
-        "SELECT name FROM users WHERE email=?", (user,)
-    ).fetchone()
+    # Resolve names
+    other_user   = conn.execute("SELECT * FROM users WHERE email=?", (user,)).fetchone()
     display_name = other_user['name'] if other_user else user.split('@')[0] if '@' in user else user
 
     conn.close()
     return render_template('chat.html',
         messages=messages, user=user, me=me,
         display_name=display_name,
-        ride_context=ride_context, ride_id=rid)
+        ride_context=ride_context,
+        ride_id=rid,
+        chat_blocked=chat_blocked)
 
 
 # 📞 EMERGENCY CONTACTS
