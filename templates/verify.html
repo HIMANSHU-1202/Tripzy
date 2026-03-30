@@ -6,10 +6,10 @@
 
     <h5 class="section-title">✅ Driver Verification</h5>
     <p style="font-size:13px; color:#777; margin-bottom:20px;">
-        Upload your documents to get a Verified Driver badge on your profile.
+        Upload your documents to get a <strong>✅ Verified Driver</strong> badge on your profile.
     </p>
 
-    <form method="POST" enctype="multipart/form-data">
+    <form method="POST" enctype="multipart/form-data" id="verifyForm">
 
         <!-- Aadhar Card -->
         <div class="doc-upload-card">
@@ -23,21 +23,27 @@
             <div class="doc-upload-right">
                 {% if verify and verify.aadhar == 'uploaded' %}
                     <span class="badge-verified">✅ Uploaded</span>
-                {% else %}
-                    <label class="upload-label" for="aadhar">
-                        📤 Upload
-                        <input type="checkbox" name="aadhar" id="aadhar"
-                            style="display:none" onchange="markUploaded(this, 'aadharStatus')">
+                    <label class="upload-label" for="aadhar" style="margin-top:6px; font-size:11px; background:#f1f3f6; color:#333">
+                        🔄 Replace
                     </label>
-                    <span class="upload-status" id="aadharStatus"></span>
+                {% else %}
+                    <label class="upload-label" for="aadhar">📤 Upload</label>
+                    <span class="upload-status" id="aadharStatus" style="font-size:11px; color:#888; margin-top:4px"></span>
                 {% endif %}
+                <input type="file" name="aadhar" id="aadhar"
+                    accept="image/*,application/pdf"
+                    style="display:none"
+                    onchange="markFileSelected(this, 'aadharStatus', 'aadharPreview')">
             </div>
+        </div>
+        <div id="aadharPreview" style="display:none; margin:-8px 0 10px; padding:0 4px">
+            <img style="max-width:100%; max-height:120px; border-radius:10px; border:2px solid #4facfe">
         </div>
 
         <!-- Driving License -->
         <div class="doc-upload-card">
             <div class="doc-upload-left">
-                <div class="doc-upload-icon">🪪</div>
+                <div class="doc-upload-icon">📋</div>
                 <div>
                     <div class="doc-upload-title">Driving License</div>
                     <div class="doc-upload-sub">Valid DL required</div>
@@ -46,15 +52,21 @@
             <div class="doc-upload-right">
                 {% if verify and verify.license == 'uploaded' %}
                     <span class="badge-verified">✅ Uploaded</span>
-                {% else %}
-                    <label class="upload-label" for="license">
-                        📤 Upload
-                        <input type="checkbox" name="license" id="license"
-                            style="display:none" onchange="markUploaded(this, 'licenseStatus')">
+                    <label class="upload-label" for="license" style="margin-top:6px; font-size:11px; background:#f1f3f6; color:#333">
+                        🔄 Replace
                     </label>
-                    <span class="upload-status" id="licenseStatus"></span>
+                {% else %}
+                    <label class="upload-label" for="license">📤 Upload</label>
+                    <span class="upload-status" id="licenseStatus" style="font-size:11px; color:#888; margin-top:4px"></span>
                 {% endif %}
+                <input type="file" name="license" id="license"
+                    accept="image/*,application/pdf"
+                    style="display:none"
+                    onchange="markFileSelected(this, 'licenseStatus', 'licensePreview')">
             </div>
+        </div>
+        <div id="licensePreview" style="display:none; margin:-8px 0 10px; padding:0 4px">
+            <img style="max-width:100%; max-height:120px; border-radius:10px; border:2px solid #4facfe">
         </div>
 
         <!-- RC Book -->
@@ -69,21 +81,27 @@
             <div class="doc-upload-right">
                 {% if verify and verify.rc == 'uploaded' %}
                     <span class="badge-verified">✅ Uploaded</span>
-                {% else %}
-                    <label class="upload-label" for="rc">
-                        📤 Upload
-                        <input type="checkbox" name="rc" id="rc"
-                            style="display:none" onchange="markUploaded(this, 'rcStatus')">
+                    <label class="upload-label" for="rc" style="margin-top:6px; font-size:11px; background:#f1f3f6; color:#333">
+                        🔄 Replace
                     </label>
-                    <span class="upload-status" id="rcStatus"></span>
+                {% else %}
+                    <label class="upload-label" for="rc">📤 Upload</label>
+                    <span class="upload-status" id="rcStatus" style="font-size:11px; color:#888; margin-top:4px"></span>
                 {% endif %}
+                <input type="file" name="rc" id="rc"
+                    accept="image/*,application/pdf"
+                    style="display:none"
+                    onchange="markFileSelected(this, 'rcStatus', 'rcPreview')">
             </div>
+        </div>
+        <div id="rcPreview" style="display:none; margin:-8px 0 10px; padding:0 4px">
+            <img style="max-width:100%; max-height:120px; border-radius:10px; border:2px solid #4facfe">
         </div>
 
         <!-- Insurance -->
         <div class="doc-upload-card">
             <div class="doc-upload-left">
-                <div class="doc-upload-icon">📋</div>
+                <div class="doc-upload-icon">🛡️</div>
                 <div>
                     <div class="doc-upload-title">Insurance</div>
                     <div class="doc-upload-sub">Vehicle insurance copy</div>
@@ -92,24 +110,33 @@
             <div class="doc-upload-right">
                 {% if verify and verify.insurance == 'uploaded' %}
                     <span class="badge-verified">✅ Uploaded</span>
-                {% else %}
-                    <label class="upload-label" for="insurance">
-                        📤 Upload
-                        <input type="checkbox" name="insurance" id="insurance"
-                            style="display:none" onchange="markUploaded(this, 'insuranceStatus')">
+                    <label class="upload-label" for="insurance" style="margin-top:6px; font-size:11px; background:#f1f3f6; color:#333">
+                        🔄 Replace
                     </label>
-                    <span class="upload-status" id="insuranceStatus"></span>
+                {% else %}
+                    <label class="upload-label" for="insurance">📤 Upload</label>
+                    <span class="upload-status" id="insuranceStatus" style="font-size:11px; color:#888; margin-top:4px"></span>
                 {% endif %}
+                <input type="file" name="insurance" id="insurance"
+                    accept="image/*,application/pdf"
+                    style="display:none"
+                    onchange="markFileSelected(this, 'insuranceStatus', 'insurancePreview')">
             </div>
+        </div>
+        <div id="insurancePreview" style="display:none; margin:-8px 0 10px; padding:0 4px">
+            <img style="max-width:100%; max-height:120px; border-radius:10px; border:2px solid #4facfe">
         </div>
 
         <!-- Info Box -->
         <div class="info-box">
-            📌 After uploading all 4 documents, you will receive a
-            <strong>✅ Verified Driver</strong> badge on your profile.
+            📌 Upload all 4 documents to receive a
+            <strong>✅ Verified Driver</strong> badge on your profile.<br>
+            <span style="font-size:11px; opacity:0.8">Accepted: JPG, PNG, PDF · Max 5MB each</span>
         </div>
 
-        <button class="submit-btn mt-3">✅ Submit for Verification</button>
+        <button type="submit" class="submit-btn mt-3" id="submitBtn">
+            ✅ Save Documents
+        </button>
 
     </form>
 
@@ -118,16 +145,49 @@
 </div>
 
 <script>
-    function markUploaded(checkbox, statusId) {
-        let status = document.getElementById(statusId);
-        if (checkbox.checked) {
-            status.textContent = '✅ Ready';
-            status.style.color = '#28a745';
-            status.style.fontSize = '12px';
-        } else {
-            status.textContent = '';
-        }
+function markFileSelected(input, statusId, previewId) {
+    const file = input.files[0];
+    if (!file) return;
+
+    // Update status label
+    const statusEl = document.getElementById(statusId);
+    if (statusEl) {
+        statusEl.textContent = '✅ ' + file.name.substring(0, 20) + (file.name.length > 20 ? '…' : '');
+        statusEl.style.color = '#28a745';
     }
+
+    // Show image preview (images only)
+    const previewDiv = document.getElementById(previewId);
+    if (previewDiv && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = previewDiv.querySelector('img');
+            if (img) {
+                img.src      = e.target.result;
+                previewDiv.style.display = 'block';
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// Warn if any file is over 5MB before submitting
+document.getElementById('verifyForm').addEventListener('submit', function(e) {
+    const inputs = this.querySelectorAll('input[type=file]');
+    let tooBig   = false;
+    inputs.forEach(inp => {
+        if (inp.files[0] && inp.files[0].size > 5 * 1024 * 1024) {
+            tooBig = true;
+        }
+    });
+    if (tooBig) {
+        e.preventDefault();
+        alert('⚠️ One or more files exceed 5MB. Please use a smaller image.');
+        return;
+    }
+    document.getElementById('submitBtn').textContent = '⏳ Uploading…';
+    document.getElementById('submitBtn').disabled    = true;
+});
 </script>
 
 {% endblock %}
