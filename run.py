@@ -309,16 +309,60 @@ def is_bookable(ride):
 
 
 # 🏠 HOME
+# ── REPLACE ONLY the index() route in run.py with this ──
+
 @app.route('/')
 def index():
     conn = get_db()
-    all_rides = conn.execute("SELECT * FROM rides ORDER BY id DESC").fetchall()
-    conn.close()
-    enriched = enrich_rides(all_rides)
-    # Show only upcoming and active rides
-    rides = [r for r in enriched if r['smart_status'] in ('not_started', 'started')]
-    return render_template('index.html', rides=rides)
+    me = session.get('user_email', '')
 
+    # All rides for the public feed (exclude own rides, show active+upcoming only)
+    all_rides = conn.execute("SELECT * FROM rides ORDER BY id DESC").fetchall()
+    enriched_all = enrich_rides(all_rides)
+
+    # Public feed: active + upcoming rides that are NOT owned by the logged-in user
+    rides = [
+        r for r in enriched_all
+        if r['smart_status'] in ('not_started', 'started')
+        and r.get('user_email', '') != me
+    ]
+
+    # My upcoming rides: rides where I am driver OR booked passenger, active+upcoming only
+    my_upcoming_rides = []
+    if me:
+        # As driver: rides I posted that are active or upcoming
+        my_offered = [
+            {**r, 'role': 'driver'}
+            for r in enriched_all
+            if r.get('user_email', '') == me
+            and r['smart_status'] in ('not_started', 'started')
+        ]
+
+        # As passenger: bookings on active or upcoming rides
+        my_bookings = conn.execute('''
+            SELECT rides.*, bookings.id as booking_id
+            FROM bookings
+            JOIN rides ON bookings.ride_id = rides.id
+            WHERE bookings.user_email = ?
+        ''', (me,)).fetchall()
+        my_joined_enriched = enrich_rides(my_bookings)
+        my_joined = [
+            {**r, 'role': 'passenger'}
+            for r in my_joined_enriched
+            if r['smart_status'] in ('not_started', 'started')
+        ]
+
+        # Merge and sort by date+time
+        combined = my_offered + my_joined
+        try:
+            combined.sort(key=lambda r: f"{r['date']} {r['time']}")
+        except Exception:
+            pass
+
+        my_upcoming_rides = combined[:5]  # Show at most 5 on homepage
+
+    conn.close()
+    return render_template('index.html', rides=rides, my_upcoming_rides=my_upcoming_rides)
 
 # 🚗 POST RIDE
 @app.route('/post', methods=['GET', 'POST'])
