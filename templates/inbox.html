@@ -3,36 +3,43 @@
 {% block content %}
 
 <!-- HEADER -->
-<div class="inbox-header">
-    <h5>💬 Messages</h5>
-    <span class="inbox-count">{{ chats|length }} conversation{{ 's' if chats|length != 1 else '' }}</span>
+<div class="inbox-header fade-in">
+    <div>
+        <h5 style="margin:0">💬 Messages</h5>
+        <p style="font-size:12px; color:#aaa; margin:2px 0 0">{{ chats|length }} conversation{{ 's' if chats|length != 1 else '' }}</p>
+    </div>
+    {% if total_unread > 0 %}
+    <span class="inbox-unread-total">{{ total_unread }} unread</span>
+    {% endif %}
 </div>
 
 {% if chats %}
-<div class="chat-list">
+<div class="chat-list fade-in">
     {% for chat in chats %}
-    <a href="/chat/{{ chat.user }}{% if chat.ride_id %}?ride_id={{ chat.ride_id }}{% endif %}" class="chat-item">
+    <a href="/chat/{{ chat.user }}{% if chat.ride_id %}?ride_id={{ chat.ride_id }}{% endif %}" class="chat-item {% if chat.unread > 0 %}chat-item-unread{% endif %}">
 
         <!-- Avatar -->
         <div class="chat-avatar-box">
             <div class="chat-avatar-inner">{{ (chat.display_name or chat.user)[0] | upper }}</div>
+            {% if chat.unread > 0 %}
+            <span class="chat-unread-dot">{{ chat.unread }}</span>
+            {% endif %}
         </div>
 
         <!-- Info -->
         <div class="chat-info">
             <div class="chat-item-top">
-                <strong>{{ chat.user }}</strong>
+                <strong class="{% if chat.unread > 0 %}chat-name-bold{% endif %}">{{ chat.display_name }}</strong>
                 <span class="chat-time">{{ chat.time }}</span>
             </div>
 
-            <!-- Ride context badge -->
             {% if chat.ride_info %}
-            <div class="chat-ride-badge">
-                🚗 {{ chat.ride_info.from_loc }} → {{ chat.ride_info.to_loc }}
-            </div>
+            <div class="chat-ride-badge">🚗 {{ chat.ride_info.from_loc }} → {{ chat.ride_info.to_loc }}</div>
             {% endif %}
 
-            <p class="chat-preview">{{ chat.message }}</p>
+            <p class="chat-preview {% if chat.unread > 0 %}chat-preview-unread{% endif %}">
+                {{ chat.message }}
+            </p>
         </div>
 
     </a>
@@ -41,7 +48,7 @@
 
 {% else %}
 <!-- Empty State -->
-<div class="inbox-empty-state">
+<div class="inbox-empty-state fade-in">
     <div class="inbox-empty-icon">💬</div>
     <h6>No messages yet</h6>
     <p>Find a ride and message the driver, or post a ride and chat with passengers.</p>
