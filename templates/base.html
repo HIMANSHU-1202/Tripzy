@@ -7,6 +7,69 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        /* ── Top bar fix: ensure relative positioning for absolute children ── */
+        .top-bar {
+            position: relative;
+        }
+
+        /* ── SOS: fixed to top-RIGHT ── */
+        .sos-btn {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: red;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 10;
+        }
+
+        /* ── Notification bell: fixed to top-LEFT, never overlaps SOS ── */
+        .notif-btn {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            text-decoration: none;
+            color: white;
+            z-index: 10;
+            /* Badge needs relative parent */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ── Badge on bell: positioned relative to the bell anchor ── */
+        .notif-badge {
+            position: absolute;
+            top: -7px;
+            right: -10px;
+            background: red;
+            color: white;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 20px;
+            min-width: 16px;
+            text-align: center;
+            line-height: 1.3;
+            border: 2px solid transparent;
+            pointer-events: none;
+        }
+
+        /* ── Logo/tagline centred reliably with padding so they don't hide under side buttons ── */
+        .top-bar {
+            padding-left: 60px;
+            padding-right: 60px;
+        }
+    </style>
 </head>
 
 <body>
@@ -16,14 +79,13 @@
     <!-- 🔝 Top Header -->
     <div class="top-bar text-center">
 
-        <!-- 🚨 SOS -->
+        <!-- 🚨 SOS — RIGHT side -->
         <a href="tel:100" class="sos-btn">SOS</a>
 
-        <!-- 🔔 Notification Bell -->
+        <!-- 🔔 Notification Bell — LEFT side -->
         {% if session.get('user_email') %}
         <a href="/notifications" class="notif-btn" id="notifBtn">
             🔔
-            {% set unread = namespace(count=0) %}
             {% if notif_count is defined and notif_count > 0 %}
             <span class="notif-badge">{{ notif_count }}</span>
             {% endif %}
@@ -50,7 +112,7 @@
 
 </div>
 
-<!-- 🔻 Bottom Navigation — OUTSIDE app-container so fixed positioning works everywhere -->
+<!-- 🔻 Bottom Navigation -->
 <div class="bottom-nav">
 
     <a href="{{ url_for('index') }}" class="nav-item">
