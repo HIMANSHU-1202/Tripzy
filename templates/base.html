@@ -48,48 +48,42 @@
         {% endblock %}
     </div>
 
-    <!-- 📌 Legal Footer (above bottom nav) -->
-    <div class="app-footer">
-        <a href="/legal">📜 Terms</a>
-        <span>·</span>
-        <a href="/legal">🔒 Privacy</a>
-        <span>·</span>
-        <span>© 2026 Tripzy™</span>
-    </div>
+</div>
 
-    <!-- 🔻 Bottom Navigation -->
-    <div class="bottom-nav">
+<!-- 🔻 Bottom Navigation — OUTSIDE app-container so fixed positioning works everywhere -->
+<div class="bottom-nav">
 
-        <a href="{{ url_for('index') }}" class="nav-item">
-            🏠
-            <span>Home</span>
-        </a>
+    <a href="{{ url_for('index') }}" class="nav-item">
+        🏠
+        <span>Home</span>
+    </a>
 
-        <a href="{{ url_for('search') }}" class="nav-item">
-            🔍
-            <span>Search</span>
-        </a>
+    <a href="{{ url_for('search') }}" class="nav-item">
+        🔍
+        <span>Search</span>
+    </a>
 
-        <a href="{{ url_for('post_ride') }}" class="nav-item center-btn">+</a>
+    <a href="{{ url_for('post_ride') }}" class="nav-item center-btn">+</a>
 
-        <a href="{{ url_for('inbox') }}" class="nav-item">
-            💬
-            <span>Inbox</span>
-        </a>
-
-        {% if session.get('user_email') %}
-        <a href="{{ url_for('profile') }}" class="nav-item">
-            👤
-            <span>Profile</span>
-        </a>
-        {% else %}
-        <a href="{{ url_for('login') }}" class="nav-item">
-            🔑
-            <span>Login</span>
-        </a>
+    <a href="{{ url_for('inbox') }}" class="nav-item">
+        💬
+        <span>Inbox</span>
+        {% if unread_msgs and unread_msgs > 0 %}
+        <span class="nav-badge">{{ unread_msgs }}</span>
         {% endif %}
+    </a>
 
-    </div>
+    {% if session.get('user_email') %}
+    <a href="{{ url_for('profile') }}" class="nav-item">
+        👤
+        <span>Profile</span>
+    </a>
+    {% else %}
+    <a href="{{ url_for('login') }}" class="nav-item">
+        🔑
+        <span>Login</span>
+    </a>
+    {% endif %}
 
 </div>
 
