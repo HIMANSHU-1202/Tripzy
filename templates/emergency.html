@@ -2,404 +2,59 @@
 
 {% block content %}
 
-<!-- 👤 PROFILE HEADER -->
-<div class="profile-header">
-    <img src="https://via.placeholder.com/100" class="profile-img">
-    <h4>{{ user.name }}</h4>
-    <p class="rating">⭐ {{ user.rating }} Rating</p>
+<div class="form-card">
 
-    <!-- ✅ Verified Badge — shows only if all 4 docs uploaded -->
-    {% if verify and verify.aadhar == 'uploaded' and verify.license == 'uploaded' and verify.rc == 'uploaded' and verify.insurance == 'uploaded' %}
-    <span class="verified-badge">✅ Verified Driver</span>
-    {% endif %}
-</div>
+    <h5 class="section-title">🚨 Emergency Contacts</h5>
+    <p style="font-size:13px; color:#777; margin-bottom:20px;">
+        These contacts receive your live GPS location via WhatsApp when you press SOS.
+    </p>
 
+    <form method="POST">
 
-<!-- 📊 STATS -->
-<div class="stats-row">
-    <div class="stat-card">
-        <h5>{{ offered|length }}</h5>
-        <p>Offered</p>
-    </div>
-    <div class="stat-card">
-        <h5>{{ joined|length }}</h5>
-        <p>Joined</p>
-    </div>
-    <div class="stat-card">
-        <h5>{{ user.total_rides }}</h5>
-        <p>Total</p>
-    </div>
-</div>
+        <div class="contact-section">
+            <div class="contact-label">👤 Contact 1</div>
 
-<!-- 📊 SUMMARY BUTTON -->
-<a href="/summary" class="summary-btn">📊 View Summary</a>
-
-
-<!-- 🚗 OFFERED RIDES -->
-<div class="card-box">
-    <h6>Offered Rides</h6>
-
-    {% if offered %}
-        {% for ride in offered %}
-        <div class="ride-card-small" id="rideCard{{ ride.id }}">
-
-            <div style="flex:1">
-                <strong>{{ ride.from_loc }} → {{ ride.to_loc }}</strong>
-                <p>{{ ride.date }} | {{ ride.time }}</p>
-                <small>Status: <span class="status-badge {{ ride.status }}">{{ ride.status }}</span></small>
+            <div class="input-group-custom">
+                <label>Full Name</label>
+                <input type="text" name="name1" placeholder="e.g. Rahul Sharma"
+                    value="{{ contacts.name1 if contacts else '' }}" required>
             </div>
 
-            <span class="price">₹{{ ride.price }}</span>
-
-            <!-- 🚀 ACTIONS -->
-            <div class="ride-actions mt-2" style="width:100%">
-
-                {% if ride.status == 'not_started' %}
-                    <a href="/start/{{ ride.id }}" class="mini-btn">▶ Start</a>
-
-                {% elif ride.status == 'started' %}
-                    <a href="/end/{{ ride.id }}" class="mini-btn">⏹ End</a>
-
-                    <button onclick="toggleTracking('{{ ride.id }}')" class="mini-btn track-btn" id="trackBtn{{ ride.id }}">
-                        📍 Track
-                    </button>
-
-                    <button onclick="sendSOS('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="mini-btn danger">
-                        🚨 SOS
-                    </button>
-
-                    <button onclick="shareLocation('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="mini-btn">
-                        📤 Share
-                    </button>
-
-                {% else %}
-                    <span class="success-msg">✔ Completed</span>
-                {% endif %}
-
+            <div class="input-group-custom">
+                <label>Phone Number</label>
+                <input type="tel" name="phone1" placeholder="10-digit mobile number"
+                    value="{{ contacts.phone1 if contacts else '' }}"
+                    maxlength="10" required>
             </div>
-
-            <!-- 🗺️ INLINE LIVE TRACKING PANEL — only for started rides -->
-            {% if ride.status == 'started' %}
-            <div class="tracking-panel" id="trackPanel{{ ride.id }}" style="display:none; width:100%">
-
-                <div class="track-status-bar" id="statusBar{{ ride.id }}">
-                    🟡 Getting location...
-                </div>
-
-                <iframe
-                    id="liveMap{{ ride.id }}"
-                    width="100%"
-                    height="200"
-                    style="border-radius:12px; border:none; margin-top:8px;"
-                    loading="lazy"
-                    src="https://www.google.com/maps?q={{ ride.from_loc }}&output=embed">
-                </iframe>
-
-                <div class="coords-row">
-                    <div class="coord-box">
-                        <span class="coord-label">Latitude</span>
-                        <span class="coord-val" id="lat{{ ride.id }}">--</span>
-                    </div>
-                    <div class="coord-box">
-                        <span class="coord-label">Longitude</span>
-                        <span class="coord-val" id="lon{{ ride.id }}">--</span>
-                    </div>
-                    <div class="coord-box">
-                        <span class="coord-label">Updated</span>
-                        <span class="coord-val" id="upd{{ ride.id }}">--</span>
-                    </div>
-                </div>
-
-            </div>
-            {% endif %}
-
         </div>
-        {% endfor %}
-    {% else %}
-        <p class="empty-text">No rides offered yet</p>
-    {% endif %}
 
-</div>
+        <div class="contact-divider">— Contact 2 —</div>
 
+        <div class="contact-section">
+            <div class="contact-label">👤 Contact 2</div>
 
-<!-- 🎟 JOINED RIDES -->
-<div class="card-box">
-    <h6>Joined Rides</h6>
-
-    {% if joined %}
-        {% for ride in joined %}
-        <div class="ride-card-small">
-
-            <div style="flex:1">
-                <strong>{{ ride.from_loc }} → {{ ride.to_loc }}</strong>
-                <p>{{ ride.date }} | {{ ride.time }}</p>
-                <small class="booking-time">Booked on: {{ ride.booked_at }}</small>
-
-                <!-- 📍 Passenger tracking — only if ride is ongoing -->
-                {% if ride.status == 'started' %}
-                <div style="margin-top:6px; display:flex; gap:6px;">
-                    <button onclick="toggleTracking('pass{{ ride.id }}')" class="mini-btn track-btn">
-                        📍 Track
-                    </button>
-                    <button onclick="sendSOS('{{ ride.from_loc }}','{{ ride.to_loc }}')" class="mini-btn danger">
-                        🚨 SOS
-                    </button>
-                </div>
-
-                <div class="tracking-panel" id="trackPanelpass{{ ride.id }}" style="display:none">
-                    <div class="track-status-bar" id="statusBarpass{{ ride.id }}">🟡 Getting location...</div>
-                    <iframe id="liveMappass{{ ride.id }}" width="100%" height="180"
-                        style="border-radius:12px; border:none; margin-top:8px;"
-                        src="https://www.google.com/maps?q={{ ride.from_loc }}&output=embed">
-                    </iframe>
-                    <div class="coords-row">
-                        <div class="coord-box">
-                            <span class="coord-label">Latitude</span>
-                            <span class="coord-val" id="latpass{{ ride.id }}">--</span>
-                        </div>
-                        <div class="coord-box">
-                            <span class="coord-label">Longitude</span>
-                            <span class="coord-val" id="lonpass{{ ride.id }}">--</span>
-                        </div>
-                        <div class="coord-box">
-                            <span class="coord-label">Updated</span>
-                            <span class="coord-val" id="updpass{{ ride.id }}">--</span>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- ⭐ Rating -->
-                {% if ride.rating %}
-                    <p class="rated">⭐ {{ ride.rating }}/5</p>
-                {% else %}
-                    <form action="/rate/{{ ride.booking_id }}" method="POST" class="rating-form">
-                        <select name="rating">
-                            <option value="5">⭐ 5</option>
-                            <option value="4">⭐ 4</option>
-                            <option value="3">⭐ 3</option>
-                            <option value="2">⭐ 2</option>
-                            <option value="1">⭐ 1</option>
-                        </select>
-                        <button class="rate-btn">Rate</button>
-                    </form>
-                {% endif %}
+            <div class="input-group-custom">
+                <label>Full Name</label>
+                <input type="text" name="name2" placeholder="e.g. Priya Sharma"
+                    value="{{ contacts.name2 if contacts else '' }}" required>
             </div>
 
-            <div class="action-side">
-                <span class="price">₹{{ ride.price }}</span>
-                <a href="/cancel/{{ ride.booking_id }}" class="cancel-btn">Cancel</a>
+            <div class="input-group-custom">
+                <label>Phone Number</label>
+                <input type="tel" name="phone2" placeholder="10-digit mobile number"
+                    value="{{ contacts.phone2 if contacts else '' }}"
+                    maxlength="10" required>
             </div>
-
         </div>
-        {% endfor %}
-    {% else %}
-        <p class="empty-text">No joined rides</p>
-    {% endif %}
 
-</div>
-
-
-<!-- ⏳ UPCOMING RIDES -->
-<div class="card-box">
-    <h6>Upcoming Rides</h6>
-
-    {% if upcoming %}
-        {% for ride in upcoming %}
-        <div class="ride-card-small">
-            <strong>{{ ride.from_loc }} → {{ ride.to_loc }}</strong>
-            <p>{{ ride.date }} | {{ ride.time }}</p>
-            <span class="price">₹{{ ride.price }}</span>
+        <div class="info-box">
+            🔒 These contacts are saved to your account and only used during SOS emergencies.
         </div>
-        {% endfor %}
-    {% else %}
-        <p class="empty-text">No upcoming rides</p>
-    {% endif %}
 
+        <button class="submit-btn mt-3">💾 Save Contacts</button>
+    </form>
+
+    <a href="/profile" class="back-link">← Back to Profile</a>
 </div>
-
-
-<!-- 📄 DOCUMENTS — merged with verification system -->
-<div class="card-box">
-    <h6>📄 Documents</h6>
-
-    <div class="doc-row">
-        <span>📄 Aadhar Card</span>
-        {% if verify and verify.aadhar == 'uploaded' %}
-            <span class="badge-verified">✅ Verified</span>
-        {% else %}
-            <span class="badge-pending">⏳ Pending</span>
-        {% endif %}
-    </div>
-
-    <div class="doc-row">
-        <span>📄 Driving License</span>
-        {% if verify and verify.license == 'uploaded' %}
-            <span class="badge-verified">✅ Verified</span>
-        {% else %}
-            <span class="badge-pending">⏳ Pending</span>
-        {% endif %}
-    </div>
-
-    <div class="doc-row">
-        <span>📄 RC Book</span>
-        {% if verify and verify.rc == 'uploaded' %}
-            <span class="badge-verified">✅ Verified</span>
-        {% else %}
-            <span class="badge-pending">⏳ Pending</span>
-        {% endif %}
-    </div>
-
-    <div class="doc-row">
-        <span>📄 Insurance</span>
-        {% if verify and verify.insurance == 'uploaded' %}
-            <span class="badge-verified">✅ Verified</span>
-        {% else %}
-            <span class="badge-pending">⏳ Pending</span>
-        {% endif %}
-    </div>
-
-    <a href="/verify" class="edit-contacts-btn">📤 Upload / Update Documents</a>
-
-</div>
-
-
-<!-- 📞 EMERGENCY CONTACTS -->
-<div class="card-box">
-    <h6>🚨 Emergency Contacts</h6>
-
-    {% if contacts %}
-    <div class="contact-row">
-        <span>👤 {{ contacts.name1 }}</span>
-        <a href="tel:{{ contacts.phone1 }}" class="call-btn">📞 Call</a>
-    </div>
-    <div class="contact-row">
-        <span>👤 {{ contacts.name2 }}</span>
-        <a href="tel:{{ contacts.phone2 }}" class="call-btn">📞 Call</a>
-    </div>
-    {% else %}
-    <p class="empty-text">No emergency contacts saved</p>
-    {% endif %}
-
-    <a href="/emergency" class="edit-contacts-btn">✏️ Edit Contacts</a>
-</div>
-
-
-<!-- 🔧 JAVASCRIPT -->
-<script>
-
-    let trackingIntervals = {};
-
-    function toggleTracking(rideId) {
-        let panel = document.getElementById('trackPanel' + rideId);
-        let btn   = document.getElementById('trackBtn' + rideId);
-
-        if (!panel) return;
-
-        if (panel.style.display === 'none') {
-            panel.style.display = 'block';
-            if (btn) btn.textContent = '⏹ Stop';
-            updateLiveLocation(rideId);
-            trackingIntervals[rideId] = setInterval(function() {
-                updateLiveLocation(rideId);
-            }, 10000);
-        } else {
-            panel.style.display = 'none';
-            if (btn) btn.textContent = '📍 Track';
-            if (trackingIntervals[rideId]) {
-                clearInterval(trackingIntervals[rideId]);
-                delete trackingIntervals[rideId];
-            }
-        }
-    }
-
-    function updateLiveLocation(rideId) {
-        let statusBar = document.getElementById('statusBar' + rideId);
-
-        if (!navigator.geolocation) {
-            if (statusBar) statusBar.innerHTML = '🔴 GPS not supported';
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-            function(pos) {
-                let lat = pos.coords.latitude;
-                let lon = pos.coords.longitude;
-
-                let latEl = document.getElementById('lat' + rideId);
-                let lonEl = document.getElementById('lon' + rideId);
-                let updEl = document.getElementById('upd' + rideId);
-
-                if (latEl) latEl.textContent = lat.toFixed(5);
-                if (lonEl) lonEl.textContent = lon.toFixed(5);
-
-                if (updEl) {
-                    let now = new Date();
-                    updEl.textContent =
-                        now.getHours().toString().padStart(2,'0') + ':' +
-                        now.getMinutes().toString().padStart(2,'0') + ':' +
-                        now.getSeconds().toString().padStart(2,'0');
-                }
-
-                let map = document.getElementById('liveMap' + rideId);
-                if (map) {
-                    map.src = `https://www.google.com/maps?q=${lat},${lon}&output=embed&z=15`;
-                }
-
-                if (statusBar) {
-                    statusBar.innerHTML = '🟢 Live — Updates every 10s';
-                    statusBar.style.color = '#155724';
-                    statusBar.style.background = '#d4edda';
-                }
-            },
-            function(err) {
-                if (statusBar) {
-                    statusBar.innerHTML = '🔴 Location access denied';
-                    statusBar.style.color = '#721c24';
-                    statusBar.style.background = '#f8d7da';
-                }
-            }
-        );
-    }
-
-    function shareLocation(from, to) {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(pos) {
-                let lat = pos.coords.latitude;
-                let lon = pos.coords.longitude;
-                let link = `https://maps.google.com/?q=${lat},${lon}`;
-                let msg = `📍 I am traveling from ${from} to ${to}.\nTrack me: ${link}`;
-                window.open("https://wa.me/?text=" + encodeURIComponent(msg));
-            });
-        }
-    }
-
-    function sendSOS(from, to) {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(pos) {
-                let lat = pos.coords.latitude;
-                let lon = pos.coords.longitude;
-                let link = `https://maps.google.com/?q=${lat},${lon}`;
-
-                {% if contacts and contacts.phone1 %}
-                let msg1 = `🚨 EMERGENCY! I am on a ride from ${from} to ${to}. Help me: ${link}`;
-                window.open("https://wa.me/91{{ contacts.phone1 }}?text=" + encodeURIComponent(msg1));
-                {% endif %}
-
-                {% if contacts and contacts.phone2 %}
-                setTimeout(function() {
-                    let msg2 = `🚨 EMERGENCY! I am on a ride from ${from} to ${to}. Help me: ${link}`;
-                    window.open("https://wa.me/91{{ contacts.phone2 }}?text=" + encodeURIComponent(msg2));
-                }, 1500);
-                {% endif %}
-
-                {% if not contacts %}
-                alert("⚠️ No emergency contacts saved! Go to Profile → Edit Contacts.");
-                {% endif %}
-            });
-        }
-    }
-
-</script>
 
 {% endblock %}
