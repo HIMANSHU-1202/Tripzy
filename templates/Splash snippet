@@ -1,0 +1,380 @@
+<!-- ══════════════════════════════════════════
+     TRIPZY SPLASH SCREEN
+     Paste this entire block right after <body>
+     in templates/base.html
+══════════════════════════════════════════ -->
+
+<style>
+/* Splash overlay */
+#splash {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: #0a0e1a;
+    cursor: pointer;
+}
+.splash-bg {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, #0d2b4e 0%, #0a0e1a 65%);
+    z-index: 0;
+}
+.splash-stars { position: absolute; inset: 0; z-index: 1; }
+.splash-star {
+    position: absolute; background: white; border-radius: 50%;
+    animation: splTwinkle var(--dur, 2s) ease-in-out infinite var(--delay, 0s);
+}
+@keyframes splTwinkle {
+    0%,100%{ opacity:.2; transform:scale(1);   }
+    50%    { opacity:1;  transform:scale(1.4); }
+}
+/* Road */
+.splash-road {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 38%; z-index: 2; overflow: hidden;
+}
+.splash-road-surface {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, #111318 0%, #1a1d2e 100%);
+}
+.splash-road-surface::before {
+    content: '';
+    position: absolute; bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 30vw solid transparent;
+    border-right: 30vw solid transparent;
+    border-bottom: 38vh solid #1e2235;
+}
+.splash-dashes {
+    position: absolute; bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    display: flex; flex-direction: column;
+    align-items: center; width: 6px; height: 100%; overflow: hidden;
+}
+.splash-dash {
+    width: 4px; height: 28px; background: rgba(79,172,254,.55);
+    border-radius: 2px; flex-shrink: 0; margin-bottom: 18px;
+    animation: splDash .6s linear infinite;
+}
+@keyframes splDash {
+    0%  { transform: translateY(-46px); }
+    100%{ transform: translateY(0); }
+}
+.splash-horizon {
+    position: absolute; bottom: 38%; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, rgba(79,172,254,.6) 30%, #4facfe 50%, rgba(79,172,254,.6) 70%, transparent 100%);
+    z-index: 3;
+    animation: splHorizon 3s ease-in-out infinite;
+}
+@keyframes splHorizon {
+    0%,100%{ opacity:.6; filter:blur(1px); }
+    50%    { opacity:1;  filter:blur(0); }
+}
+/* Rings */
+.splash-rings {
+    position: absolute; bottom: calc(38% - 6px); left: 50%;
+    transform: translateX(-50%); z-index: 5;
+}
+.splash-ring {
+    position: absolute; border-radius: 50%;
+    border: 1px solid rgba(79,172,254,.4);
+    top:50%; left:50%;
+    transform: translate(-50%,-50%) scale(0);
+    animation: splRing 2s ease-out infinite;
+}
+.splash-ring:nth-child(1){ animation-delay:1.8s; }
+.splash-ring:nth-child(2){ animation-delay:2.3s; }
+.splash-ring:nth-child(3){ animation-delay:2.8s; }
+@keyframes splRing {
+    0%  { width:20px;  height:10px; opacity:.8; transform:translate(-50%,-50%) scale(1); }
+    100%{ width:300px; height:60px; opacity:0;  transform:translate(-50%,-50%) scale(1); }
+}
+/* Beams */
+.splash-beams {
+    position: absolute; bottom: calc(38% - 4px); left: 50%;
+    transform: translateX(-50%); z-index: 9;
+    animation: splCarArrive 1.2s cubic-bezier(.16,1,.3,1) .3s both;
+}
+.splash-beam {
+    position: absolute; bottom: 12px;
+    width: 0; height: 0; border-style: solid; opacity: .35;
+}
+.splash-beam-l {
+    right: calc(50% + 28px);
+    border-width: 6px 0 6px 90px;
+    border-color: transparent transparent transparent rgba(255,240,180,.5);
+    transform: rotate(-4deg); filter: blur(3px);
+}
+.splash-beam-r {
+    left: calc(50% + 28px);
+    border-width: 6px 90px 6px 0;
+    border-color: transparent rgba(255,240,180,.5) transparent transparent;
+    transform: rotate(4deg); filter: blur(3px);
+}
+/* Car */
+.splash-car-wrap {
+    position: absolute; bottom: calc(38% - 4px); left: 50%;
+    transform: translateX(-50%); z-index: 10;
+    animation: splCarArrive 1.2s cubic-bezier(.16,1,.3,1) .3s both;
+}
+@keyframes splCarArrive {
+    0%  { transform:translateX(-50%) translateY(80px) scale(.4); opacity:0; }
+    60% { transform:translateX(-50%) translateY(-8px) scale(1.02); opacity:1; }
+    80% { transform:translateX(-50%) translateY(3px) scale(.99); }
+    100%{ transform:translateX(-50%) translateY(0) scale(1); }
+}
+.splash-car {
+    width: 110px;
+    filter: drop-shadow(0 0 18px rgba(79,172,254,.8)) drop-shadow(0 4px 8px rgba(0,0,0,.6));
+    animation: splCarFloat 3s ease-in-out 1.5s infinite;
+}
+@keyframes splCarFloat {
+    0%,100%{ transform:translateY(0); }
+    50%    { transform:translateY(-5px); }
+}
+/* Speed lines */
+.splash-speed {
+    position: absolute; bottom: calc(38% + 10px); left: 0; right: 0;
+    height: 60px; z-index: 6; overflow: hidden;
+    opacity: 0; animation: splSpeedIn .4s ease .8s forwards;
+}
+@keyframes splSpeedIn{ to{ opacity:1; } }
+.splash-speed-line {
+    position: absolute; height: 1.5px;
+    background: linear-gradient(90deg, transparent, rgba(79,172,254,.5), transparent);
+    border-radius: 2px;
+    animation: splSpeedMove var(--spd,.5s) linear infinite var(--del,0s);
+}
+@keyframes splSpeedMove {
+    0%  { transform:translateX(-60%); opacity:0; }
+    30% { opacity:1; }
+    70% { opacity:1; }
+    100%{ transform:translateX(60%); opacity:0; }
+}
+/* Brand */
+.splash-brand {
+    position: relative; z-index: 20;
+    text-align: center; margin-bottom: 8%;
+    animation: splBrand .8s cubic-bezier(.16,1,.3,1) 1.4s both;
+}
+@keyframes splBrand {
+    0%  { opacity:0; transform:translateY(-24px) scale(.9); }
+    100%{ opacity:1; transform:translateY(0) scale(1); }
+}
+.splash-logo-img {
+    width: 130px;
+    filter: drop-shadow(0 0 24px rgba(79,172,254,.9)) drop-shadow(0 0 8px rgba(0,242,254,.6));
+    animation: splLogoPulse 2.5s ease-in-out 2.2s infinite;
+}
+@keyframes splLogoPulse {
+    0%,100%{ filter:drop-shadow(0 0 24px rgba(79,172,254,.9)) drop-shadow(0 0 8px rgba(0,242,254,.6)); }
+    50%    { filter:drop-shadow(0 0 36px rgba(79,172,254,1))   drop-shadow(0 0 16px rgba(0,242,254,.9)); }
+}
+.splash-brand-name {
+    font-family: 'Righteous', cursive;
+    font-size: 52px; letter-spacing: 4px; line-height: 1;
+    margin-top: 6px; position: relative; overflow: hidden;
+    background: linear-gradient(135deg, #ffffff 0%, #4facfe 50%, #00f2fe 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.splash-brand-name span {
+    display: inline-block;
+    animation: splLetter .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+.splash-brand-name span:nth-child(1){ animation-delay:1.5s; }
+.splash-brand-name span:nth-child(2){ animation-delay:1.62s; }
+.splash-brand-name span:nth-child(3){ animation-delay:1.74s; }
+.splash-brand-name span:nth-child(4){ animation-delay:1.86s; }
+.splash-brand-name span:nth-child(5){ animation-delay:1.98s; }
+.splash-brand-name span:nth-child(6){ animation-delay:2.1s; }
+@keyframes splLetter {
+    0%  { opacity:0; transform:translateY(30px) rotate(-8deg) scale(.5); }
+    70% { transform:translateY(-4px) rotate(2deg) scale(1.1); }
+    100%{ opacity:1; transform:translateY(0) rotate(0) scale(1); }
+}
+.splash-shimmer {
+    position: absolute; top:0; left:-100%; width:60%; height:100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
+    transform: skewX(-20deg);
+    animation: splShimmer .7s ease 2.6s forwards;
+}
+@keyframes splShimmer { 0%{ left:-100%; } 100%{ left:160%; } }
+.splash-tagline {
+    font-size: 13px; font-weight: 300; letter-spacing: 3px;
+    text-transform: uppercase; color: rgba(255,255,255,.5); margin-top: 8px;
+    animation: splTagline .6s ease 2.4s both;
+}
+@keyframes splTagline {
+    0%  { opacity:0; letter-spacing:8px; }
+    100%{ opacity:1; letter-spacing:3px; }
+}
+/* Dots */
+.splash-dots {
+    position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 20;
+    animation: splDotsIn .4s ease 2.2s both;
+}
+@keyframes splDotsIn{ from{opacity:0;} to{opacity:1;} }
+.splash-dot {
+    width:7px; height:7px; border-radius:50%; background:#4facfe;
+    animation: splDotBounce 1.2s ease-in-out infinite;
+}
+.splash-dot:nth-child(1){ animation-delay:0s; }
+.splash-dot:nth-child(2){ animation-delay:.15s; background:#00f2fe; }
+.splash-dot:nth-child(3){ animation-delay:.3s; }
+@keyframes splDotBounce {
+    0%,80%,100%{ transform:scale(.7); opacity:.4; }
+    40%        { transform:scale(1.2); opacity:1; }
+}
+/* Exit */
+#splash.spl-exit {
+    animation: splExit .6s cubic-bezier(.55,0,1,.45) forwards;
+}
+@keyframes splExit {
+    0%  { opacity:1; transform:scale(1); }
+    100%{ opacity:0; transform:scale(1.08); pointer-events:none; }
+}
+</style>
+
+<div id="splash" title="Tap to skip">
+    <div class="splash-bg"></div>
+    <div class="splash-stars" id="splStars"></div>
+
+    <div class="splash-brand">
+        <img src="/static/logo1.png" class="splash-logo-img" alt="Tripzy"
+             onerror="this.style.display='none'">
+        <div class="splash-brand-name">
+            <span>T</span><span>r</span><span>i</span><span>p</span><span>z</span><span>y</span>
+            <div class="splash-shimmer"></div>
+        </div>
+        <div class="splash-tagline">Your Journey Partner</div>
+    </div>
+
+    <div class="splash-road">
+        <div class="splash-road-surface"></div>
+        <div class="splash-dashes" id="splDashes"></div>
+    </div>
+    <div class="splash-horizon"></div>
+
+    <div class="splash-rings">
+        <div class="splash-ring"></div>
+        <div class="splash-ring"></div>
+        <div class="splash-ring"></div>
+    </div>
+
+    <div class="splash-beams">
+        <div class="splash-beam splash-beam-l"></div>
+        <div class="splash-beam splash-beam-r"></div>
+    </div>
+
+    <div class="splash-car-wrap">
+        <svg class="splash-car" viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="scBodyG" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#4facfe"/>
+                    <stop offset="100%" stop-color="#0077cc"/>
+                </linearGradient>
+                <linearGradient id="scRoofG" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#00d4ff"/>
+                    <stop offset="100%" stop-color="#4facfe"/>
+                </linearGradient>
+                <linearGradient id="scWinG" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="rgba(200,240,255,0.9)"/>
+                    <stop offset="100%" stop-color="rgba(100,200,255,0.5)"/>
+                </linearGradient>
+                <filter id="scGlow">
+                    <feGaussianBlur stdDeviation="2" result="b"/>
+                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+            </defs>
+            <ellipse cx="100" cy="76" rx="72" ry="6" fill="rgba(0,0,0,0.4)"/>
+            <rect x="18" y="38" width="164" height="30" rx="10" fill="url(#scBodyG)" filter="url(#scGlow)"/>
+            <path d="M55 38 Q65 18 85 16 L118 16 Q138 16 148 38 Z" fill="url(#scRoofG)" filter="url(#scGlow)"/>
+            <path d="M120 38 Q136 22 148 38 Z" fill="url(#scWinG)" opacity=".85"/>
+            <path d="M55 38 Q62 22 82 18 L86 18 Q70 22 62 38 Z" fill="url(#scWinG)" opacity=".85"/>
+            <path d="M86 18 L116 18 Q130 20 138 38 L68 38 Q72 22 86 18 Z" fill="url(#scWinG)" opacity=".75"/>
+            <path d="M90 20 L114 20 Q122 24 126 32 L86 32 Q86 24 90 20 Z" fill="rgba(255,255,255,0.15)" rx="3"/>
+            <line x1="100" y1="38" x2="100" y2="66" stroke="rgba(0,100,180,0.4)" stroke-width="1"/>
+            <rect x="74"  y="50" width="12" height="3" rx="1.5" fill="rgba(255,255,255,0.4)"/>
+            <rect x="112" y="50" width="12" height="3" rx="1.5" fill="rgba(255,255,255,0.4)"/>
+            <rect x="168" y="42" width="12" height="8" rx="3" fill="#fff5c0" opacity=".95"/>
+            <rect x="170" y="43" width="8"  height="6" rx="2" fill="#ffffff"/>
+            <rect x="20"  y="42" width="10" height="8" rx="3" fill="#ff4444" opacity=".9"/>
+            <rect x="176" y="56" width="8"  height="6" rx="3" fill="#2a3a5a"/>
+            <rect x="16"  y="56" width="8"  height="6" rx="3" fill="#2a3a5a"/>
+            <!-- Wheels -->
+            <circle cx="55"  cy="66" r="14" fill="#1a1d2e" stroke="#4facfe" stroke-width="2"/>
+            <circle cx="55"  cy="66" r="9"  fill="#2a3040" stroke="rgba(79,172,254,0.4)" stroke-width="1"/>
+            <circle cx="55"  cy="66" r="4"  fill="#4facfe" opacity=".8"/>
+            <line x1="55" y1="57" x2="55" y2="75" stroke="rgba(79,172,254,0.5)" stroke-width="1.5"/>
+            <line x1="46" y1="66" x2="64" y2="66" stroke="rgba(79,172,254,0.5)" stroke-width="1.5"/>
+            <line x1="48.6" y1="59.6" x2="61.4" y2="72.4" stroke="rgba(79,172,254,0.5)" stroke-width="1.5"/>
+            <line x1="61.4" y1="59.6" x2="48.6" y2="72.4" stroke="rgba(79,172,254,0.5)" stroke-width="1.5"/>
+            <circle cx="148" cy="66" r="14" fill="#1a1d2e" stroke="#4facfe" stroke-width="2"/>
+            <circle cx="148" cy="66" r="9"  fill="#2a3040" stroke="rgba(79,172,254,0.4)" stroke-width="1"/>
+            <circle cx="148" cy="66" r="4"  fill="#4facfe" opacity=".8"/>
+            <line x1="148" y1="57" x2="148" y2="75" stroke="rgba(79,172,254,0.5)" stroke-width="1.5"/>
+            <line x1="139" y1="66" x2="157" y2="66" stroke="rgba(79,172,254,0.5)" stroke-width="1.5"/>
+            <line x1="141.6" y1="59.6" x2="154.4" y2="72.4" stroke="rgba(79,172,254,0.5)" stroke-width="1.5"/>
+            <line x1="154.4" y1="59.6" x2="141.6" y2="72.4" stroke="rgba(79,172,254,0.5)" stroke-width="1.5"/>
+            <rect x="18" y="60" width="164" height="3" rx="1.5" fill="rgba(0,242,254,0.4)"/>
+            <rect x="88" y="15" width="24"  height="3" rx="1.5" fill="rgba(0,242,254,0.5)"/>
+        </svg>
+    </div>
+
+    <div class="splash-speed" id="splSpeed"></div>
+
+    <div class="splash-dots">
+        <div class="splash-dot"></div>
+        <div class="splash-dot"></div>
+        <div class="splash-dot"></div>
+    </div>
+</div>
+
+<link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet">
+
+<script>
+(function(){
+    /* Stars */
+    var starsEl = document.getElementById('splStars');
+    for(var i=0;i<80;i++){
+        var s=document.createElement('div'); s.className='splash-star';
+        var sz=Math.random()*2.5+0.5;
+        s.style.cssText='width:'+sz+'px;height:'+sz+'px;top:'+(Math.random()*62)+'%;left:'+(Math.random()*100)+'%;--dur:'+(Math.random()*3+1.5).toFixed(1)+'s;--delay:'+(Math.random()*3).toFixed(1)+'s;';
+        starsEl.appendChild(s);
+    }
+    /* Dashes */
+    var dEl=document.getElementById('splDashes');
+    for(var i=0;i<10;i++){var d=document.createElement('div');d.className='splash-dash';dEl.appendChild(d);}
+    /* Speed lines */
+    var spEl=document.getElementById('splSpeed');
+    for(var i=0;i<14;i++){
+        var l=document.createElement('div'); l.className='splash-speed-line';
+        var w=Math.random()*80+40;
+        l.style.cssText='width:'+w+'px;top:'+(Math.random()*100)+'%;left:'+(Math.random()*60+20)+'%;--spd:'+(Math.random()*0.4+0.3).toFixed(2)+'s;--del:'+(Math.random()*0.5).toFixed(2)+'s;';
+        spEl.appendChild(l);
+    }
+    /* Show only once per session */
+    function dismiss(){
+        var el=document.getElementById('splash');
+        if(!el||el.classList.contains('spl-exit')) return;
+        el.classList.add('spl-exit');
+        setTimeout(function(){el.style.display='none';},650);
+    }
+    /* Show splash only on first visit per session */
+    if(sessionStorage.getItem('splashShown')){
+        document.getElementById('splash').style.display='none';
+    } else {
+        sessionStorage.setItem('splashShown','1');
+        setTimeout(dismiss, 3600);
+        document.getElementById('splash').addEventListener('click', dismiss);
+    }
+})();
+</script>
+<!-- ══ END SPLASH SCREEN ══ -->
