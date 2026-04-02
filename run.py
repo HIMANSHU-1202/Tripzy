@@ -1,10 +1,17 @@
 import os
+import sqlite3
 import cloudinary
 import cloudinary.uploader
 from flask import Flask, render_template, request, redirect, url_for, session
-import psycopg2
-import psycopg2.extras
 from datetime import datetime, timedelta
+
+# ── Detect whether we have a real DATABASE_URL (production) or run locally ──
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+USE_POSTGRES  = bool(DATABASE_URL)
+
+if USE_POSTGRES:
+    import psycopg2
+    import psycopg2.extras
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'tripzy_secret_2024')
@@ -33,57 +40,123 @@ def upload_to_cloudinary(file, folder='tripzy'):
 
 
 # ═══════════════════════════════════════════
-# 🗄️  POSTGRESQL CONNECTION
+# 🗄️  DUAL-MODE DATABASE LAYER
+#   • No DATABASE_URL  → SQLite  (local dev)
+#   • DATABASE_URL set → PostgreSQL (Render)
 # ═══════════════════════════════════════════
+
 def get_db():
-    """Return a psycopg2 connection using DATABASE_URL env var."""
-    database_url = os.environ.get('DATABASE_URL', '')
+    if USE_POSTGRES:
+        url = DATABASE_URL
+        if url.startswith('postgres://'):
+            url = url.replace('postgres://', 'postgresql://', 1)
+        return psycopg2.connect(url)
+    else:
+        conn = sqlite3.connect('tripzy.db')
+        conn.row_factory = sqlite3.Row
+        return conn
 
-    # Render supplies postgres:// but psycopg2 needs postgresql://
-    if database_url.startswith('postgres://'):
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
-    conn = psycopg2.connect(database_url)
-    return conn
+class _Row(dict):
+    """Make SQLite rows behave like psycopg2 RealDictRow (dict + attr access)."""
+    def __getattr__(self, key):
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError(key)
+
+
+def _sqlite_rows(cursor):
+    """Convert sqlite3.Row results to list of _Row dicts."""
+    cols = [d[0] for d in cursor.description] if cursor.description else []
+    return [_Row(zip(cols, row)) for row in cursor.fetchall()]
 
 
 def query(sql, params=(), fetchone=False, fetchall=False, commit=False):
     """
-    Thin helper so every route doesn't need to manage cursors manually.
-    Returns rows as dicts (RealDictCursor), or lastrowid on INSERT.
+    Unified query helper.
+    - Auto-translates %s → ? for SQLite.
+    - Returns dicts for both backends.
+    - Returns last inserted id (int) when commit=True on an INSERT.
     """
     conn = get_db()
-    cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute(sql, params)
-    result = None
-    if fetchone:
-        result = cur.fetchone()
-    elif fetchall:
-        result = cur.fetchall()
-    if commit:
-        conn.commit()
-        # Return last inserted id if available
+
+    if USE_POSTGRES:
+        # PostgreSQL path
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(sql, params if params else None)
+        result = None
+        if fetchone:
+            result = cur.fetchone()
+        elif fetchall:
+            result = cur.fetchall()
+        if commit:
+            conn.commit()
+            try:
+                cur.execute('SELECT lastval()')
+                result = cur.fetchone()['lastval']
+            except Exception:
+                result = None
+        cur.close()
+        conn.close()
+        return result
+
+    else:
+        # SQLite path — swap %s placeholders to ?
+        sqlite_sql = sql.replace('%s', '?')
+
+        # Translate PostgreSQL-only DDL syntax to SQLite equivalents
+        sqlite_sql = sqlite_sql.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT')
+        sqlite_sql = sqlite_sql.replace('ON CONFLICT (key) DO NOTHING', 'OR IGNORE')
+        # ADD COLUMN IF NOT EXISTS not supported in older SQLite — wrap safely below
+
+        cur = conn.cursor()
         try:
-            cur.execute('SELECT lastval()')
-            result = cur.fetchone()['lastval']
-        except Exception:
-            result = None
-    cur.close()
-    conn.close()
-    return result
+            cur.execute(sqlite_sql, params if params else ())
+        except sqlite3.OperationalError as e:
+            # Ignore "duplicate column" errors from safe-alter migrations
+            if 'duplicate column' in str(e).lower() or 'already exists' in str(e).lower():
+                pass
+            else:
+                conn.close()
+                raise
+
+        result = None
+        if fetchone:
+            rows = _sqlite_rows(cur)
+            result = rows[0] if rows else None
+        elif fetchall:
+            result = _sqlite_rows(cur)
+        if commit:
+            conn.commit()
+            result = cur.lastrowid
+        cur.close()
+        conn.close()
+        return result
 
 
 # ═══════════════════════════════════════════
-# 🧱  INIT DATABASE  (PostgreSQL DDL)
+# 🧱  INIT DATABASE  (SQLite + PostgreSQL)
 # ═══════════════════════════════════════════
+def _ddl(sql):
+    """Translate PostgreSQL DDL to SQLite when running locally."""
+    if USE_POSTGRES:
+        return sql
+    return (sql
+            .replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT')
+            .replace('ON CONFLICT (key) DO NOTHING', 'OR IGNORE'))
+
+
 def init_db():
     conn = get_db()
     cur  = conn.cursor()
 
+    pk = 'SERIAL PRIMARY KEY' if USE_POSTGRES else 'INTEGER PRIMARY KEY AUTOINCREMENT'
+
     # ── Users ──────────────────────────────
-    cur.execute('''
+    cur.execute(f'''
         CREATE TABLE IF NOT EXISTS users (
-            id            SERIAL PRIMARY KEY,
+            id            {pk},
             name          TEXT,
             email         TEXT UNIQUE,
             password      TEXT,
@@ -96,9 +169,9 @@ def init_db():
     ''')
 
     # ── Rides ──────────────────────────────
-    cur.execute('''
+    cur.execute(f'''
         CREATE TABLE IF NOT EXISTS rides (
-            id         SERIAL PRIMARY KEY,
+            id         {pk},
             user_email TEXT,
             from_loc   TEXT,
             to_loc     TEXT,
@@ -119,9 +192,9 @@ def init_db():
     ''')
 
     # ── Bookings ───────────────────────────
-    cur.execute('''
+    cur.execute(f'''
         CREATE TABLE IF NOT EXISTS bookings (
-            id           SERIAL PRIMARY KEY,
+            id           {pk},
             ride_id      INTEGER,
             user_email   TEXT,
             seats_booked INTEGER DEFAULT 1,
@@ -131,9 +204,9 @@ def init_db():
     ''')
 
     # ── Messages ───────────────────────────
-    cur.execute('''
+    cur.execute(f'''
         CREATE TABLE IF NOT EXISTS messages (
-            id        SERIAL PRIMARY KEY,
+            id        {pk},
             sender    TEXT,
             receiver  TEXT,
             message   TEXT,
@@ -144,9 +217,9 @@ def init_db():
     ''')
 
     # ── Emergency contacts ─────────────────
-    cur.execute('''
+    cur.execute(f'''
         CREATE TABLE IF NOT EXISTS emergency_contacts (
-            id         SERIAL PRIMARY KEY,
+            id         {pk},
             user_email TEXT,
             name1      TEXT,
             phone1     TEXT,
@@ -156,9 +229,9 @@ def init_db():
     ''')
 
     # ── Verification ───────────────────────
-    cur.execute('''
+    cur.execute(f'''
         CREATE TABLE IF NOT EXISTS verification (
-            id         SERIAL PRIMARY KEY,
+            id         {pk},
             user_email TEXT,
             aadhar     TEXT DEFAULT 'pending',
             license    TEXT DEFAULT 'pending',
@@ -168,9 +241,9 @@ def init_db():
     ''')
 
     # ── Reviews ────────────────────────────
-    cur.execute('''
+    cur.execute(f'''
         CREATE TABLE IF NOT EXISTS reviews (
-            id             SERIAL PRIMARY KEY,
+            id             {pk},
             ride_id        INTEGER,
             reviewer_email TEXT,
             reviewee_email TEXT,
@@ -182,9 +255,9 @@ def init_db():
     ''')
 
     # ── Notifications ──────────────────────
-    cur.execute('''
+    cur.execute(f'''
         CREATE TABLE IF NOT EXISTS notifications (
-            id         SERIAL PRIMARY KEY,
+            id         {pk},
             user_email TEXT,
             message    TEXT,
             is_read    INTEGER DEFAULT 0,
@@ -193,9 +266,9 @@ def init_db():
     ''')
 
     # ── Cars ───────────────────────────────
-    cur.execute('''
+    cur.execute(f'''
         CREATE TABLE IF NOT EXISTS cars (
-            id         SERIAL PRIMARY KEY,
+            id         {pk},
             user_email TEXT,
             name       TEXT,
             model      TEXT,
@@ -212,27 +285,42 @@ def init_db():
             value TEXT
         )
     ''')
-    cur.execute('''
-        INSERT INTO config (key, value)
-        VALUES ('commission_pct', '10')
-        ON CONFLICT (key) DO NOTHING
-    ''')
-
-    # ── Safe column migrations for existing deployments ──
-    safe_alters = [
-        "ALTER TABLE bookings  ADD COLUMN IF NOT EXISTS seats_booked INTEGER DEFAULT 1",
-        "ALTER TABLE bookings  ADD COLUMN IF NOT EXISTS user_email   TEXT",
-        "ALTER TABLE rides     ADD COLUMN IF NOT EXISTS user_email   TEXT",
-        "ALTER TABLE messages  ADD COLUMN IF NOT EXISTS ride_id      INTEGER",
-        "ALTER TABLE messages  ADD COLUMN IF NOT EXISTS is_read      INTEGER DEFAULT 0",
-    ]
-    for sql in safe_alters:
-        try:
-            cur.execute(sql)
-        except Exception:
-            conn.rollback()
+    # Insert default commission — syntax differs between backends
+    if USE_POSTGRES:
+        cur.execute("""
+            INSERT INTO config (key, value) VALUES ('commission_pct', '10')
+            ON CONFLICT (key) DO NOTHING
+        """)
+    else:
+        cur.execute("""
+            INSERT OR IGNORE INTO config (key, value) VALUES ('commission_pct', '10')
+        """)
 
     conn.commit()
+
+    # ── Safe column migrations (ADD COLUMN IF NOT EXISTS = PostgreSQL only) ──
+    # For SQLite we catch the OperationalError if column already exists.
+    safe_alters = [
+        ("bookings",  "seats_booked", "INTEGER DEFAULT 1"),
+        ("bookings",  "user_email",   "TEXT"),
+        ("rides",     "user_email",   "TEXT"),
+        ("messages",  "ride_id",      "INTEGER"),
+        ("messages",  "is_read",      "INTEGER DEFAULT 0"),
+    ]
+    for table, col, col_type in safe_alters:
+        if USE_POSTGRES:
+            try:
+                cur.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type}")
+                conn.commit()
+            except Exception:
+                conn.rollback()
+        else:
+            try:
+                cur.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass  # column already exists — fine
+
     cur.close()
     conn.close()
 
@@ -801,7 +889,7 @@ def chat(user):
         messages = query('''
             SELECT * FROM messages
             WHERE ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s))
-            AND (ride_id IS NULL OR ride_id::text='')
+            AND (ride_id IS NULL OR ride_id = 0)
             ORDER BY id
         ''', (me, user, user, me), fetchall=True) or []
 
@@ -924,9 +1012,10 @@ def register():
                   (request.form['name'], request.form['email'], request.form['password']),
                   commit=True)
             return redirect(url_for('login'))
-        except psycopg2.errors.UniqueViolation:
-            return render_template('register.html', error='Email already registered')
-        except Exception:
+        except Exception as e:
+            err = str(e).lower()
+            if 'unique' in err or 'duplicate' in err:
+                return render_template('register.html', error='Email already registered')
             return render_template('register.html', error='Registration failed')
     return render_template('register.html')
 
