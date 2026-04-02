@@ -1,224 +1,239 @@
+import os
+import cloudinary
+import cloudinary.uploader
 from flask import Flask, render_template, request, redirect, url_for, session
-import sqlite3
+import psycopg2
+import psycopg2.extras
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
-app.secret_key = 'tripzy_secret_2024'
+app.secret_key = os.environ.get('SECRET_KEY', 'tripzy_secret_2024')
 
-# 🔔 Inject notif_count + unread_msgs into all templates
-@app.context_processor
-def inject_notif_count():
-    from flask import session
-    if 'user_email' in session:
-        try:
-            conn    = get_db()
-            me      = session['user_email']
-            notifs  = conn.execute(
-                "SELECT COUNT(*) FROM notifications WHERE user_email=? AND is_read=0",
-                (me,)
-            ).fetchone()[0]
-            unread_msgs = conn.execute(
-                "SELECT COUNT(*) FROM messages WHERE receiver=? AND is_read=0",
-                (me,)
-            ).fetchone()[0]
-            conn.close()
-            return dict(notif_count=notifs, unread_msgs=unread_msgs)
-        except:
-            pass
-    return dict(notif_count=0, unread_msgs=0)
+# ═══════════════════════════════════════════
+# ☁️  CLOUDINARY CONFIG
+# ═══════════════════════════════════════════
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+    api_key=os.environ.get('CLOUDINARY_API_KEY', ''),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET', ''),
+)
+
+def upload_to_cloudinary(file, folder='tripzy'):
+    """Upload a file object to Cloudinary, return secure URL or ''."""
+    try:
+        result = cloudinary.uploader.upload(
+            file,
+            folder=folder,
+            resource_type='auto',
+        )
+        return result.get('secure_url', '')
+    except Exception as e:
+        print(f'Cloudinary upload error: {e}')
+        return ''
 
 
-# 📦 DATABASE CONNECTION
+# ═══════════════════════════════════════════
+# 🗄️  POSTGRESQL CONNECTION
+# ═══════════════════════════════════════════
 def get_db():
-    conn = sqlite3.connect('tripzy.db')
-    conn.row_factory = sqlite3.Row
+    """Return a psycopg2 connection using DATABASE_URL env var."""
+    database_url = os.environ.get('DATABASE_URL', '')
+
+    # Render supplies postgres:// but psycopg2 needs postgresql://
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+    conn = psycopg2.connect(database_url)
     return conn
 
 
-# 🧱 CREATE TABLES
+def query(sql, params=(), fetchone=False, fetchall=False, commit=False):
+    """
+    Thin helper so every route doesn't need to manage cursors manually.
+    Returns rows as dicts (RealDictCursor), or lastrowid on INSERT.
+    """
+    conn = get_db()
+    cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(sql, params)
+    result = None
+    if fetchone:
+        result = cur.fetchone()
+    elif fetchall:
+        result = cur.fetchall()
+    if commit:
+        conn.commit()
+        # Return last inserted id if available
+        try:
+            cur.execute('SELECT lastval()')
+            result = cur.fetchone()['lastval']
+        except Exception:
+            result = None
+    cur.close()
+    conn.close()
+    return result
+
+
+# ═══════════════════════════════════════════
+# 🧱  INIT DATABASE  (PostgreSQL DDL)
+# ═══════════════════════════════════════════
 def init_db():
     conn = get_db()
-    cur = conn.cursor()
+    cur  = conn.cursor()
 
-    # 🚗 Rides
+    # ── Users ──────────────────────────────
     cur.execute('''
-    CREATE TABLE IF NOT EXISTS rides (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        from_loc TEXT,
-        to_loc TEXT,
-        date TEXT,
-        time TEXT,
-        seats INTEGER,
-        price INTEGER,
-        music TEXT,
-        smoking TEXT,
-        luggage TEXT,
-        stops TEXT,
-        gender TEXT,
-        ac TEXT,
-        pets TEXT,
-        charging TEXT,
-        status TEXT DEFAULT 'not_started'
-    )
+        CREATE TABLE IF NOT EXISTS users (
+            id            SERIAL PRIMARY KEY,
+            name          TEXT,
+            email         TEXT UNIQUE,
+            password      TEXT,
+            phone         TEXT,
+            bio           TEXT,
+            photo         TEXT,
+            avg_rating    REAL    DEFAULT 0.0,
+            total_ratings INTEGER DEFAULT 0
+        )
     ''')
 
-    # 🎟️ Bookings
+    # ── Rides ──────────────────────────────
     cur.execute('''
-    CREATE TABLE IF NOT EXISTS bookings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ride_id INTEGER,
-        booked_at TEXT,
-        rating TEXT
-    )
+        CREATE TABLE IF NOT EXISTS rides (
+            id         SERIAL PRIMARY KEY,
+            user_email TEXT,
+            from_loc   TEXT,
+            to_loc     TEXT,
+            date       TEXT,
+            time       TEXT,
+            seats      INTEGER,
+            price      INTEGER,
+            music      TEXT,
+            smoking    TEXT,
+            luggage    TEXT,
+            stops      TEXT,
+            gender     TEXT,
+            ac         TEXT,
+            pets       TEXT,
+            charging   TEXT,
+            status     TEXT DEFAULT 'not_started'
+        )
     ''')
 
-    # 💬 Messages
+    # ── Bookings ───────────────────────────
     cur.execute('''
-    CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        sender TEXT,
-        receiver TEXT,
-        message TEXT,
-        time TEXT,
-        ride_id INTEGER,
-        is_read INTEGER DEFAULT 0
-    )
+        CREATE TABLE IF NOT EXISTS bookings (
+            id           SERIAL PRIMARY KEY,
+            ride_id      INTEGER,
+            user_email   TEXT,
+            seats_booked INTEGER DEFAULT 1,
+            booked_at    TEXT,
+            rating       TEXT
+        )
     ''')
 
-    # 💬 Chats table — one conversation per (user1, user2, ride)
+    # ── Messages ───────────────────────────
     cur.execute('''
-    CREATE TABLE IF NOT EXISTS chats (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ride_id INTEGER,
-        user1_email TEXT,
-        user2_email TEXT,
-        created_at TEXT,
-        is_archived INTEGER DEFAULT 0
-    )
+        CREATE TABLE IF NOT EXISTS messages (
+            id        SERIAL PRIMARY KEY,
+            sender    TEXT,
+            receiver  TEXT,
+            message   TEXT,
+            time      TEXT,
+            ride_id   INTEGER,
+            is_read   INTEGER DEFAULT 0
+        )
     ''')
 
-    # Safe migrations
-    safe_chat_alters = [
-        "ALTER TABLE messages ADD COLUMN ride_id INTEGER",
-        "ALTER TABLE messages ADD COLUMN is_read INTEGER DEFAULT 0",
-        "ALTER TABLE messages ADD COLUMN chat_id INTEGER",
-    ]
-    for sql in safe_chat_alters:
-        try:
-            cur.execute(sql)
-        except:
-            pass
-
-    # 📞 Emergency Contacts
+    # ── Emergency contacts ─────────────────
     cur.execute('''
-    CREATE TABLE IF NOT EXISTS emergency_contacts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name1 TEXT,
-        phone1 TEXT,
-        name2 TEXT,
-        phone2 TEXT
-    )
+        CREATE TABLE IF NOT EXISTS emergency_contacts (
+            id         SERIAL PRIMARY KEY,
+            user_email TEXT,
+            name1      TEXT,
+            phone1     TEXT,
+            name2      TEXT,
+            phone2     TEXT
+        )
     ''')
 
-    # ✅ Driver Verification
+    # ── Verification ───────────────────────
     cur.execute('''
-    CREATE TABLE IF NOT EXISTS verification (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        aadhar TEXT DEFAULT 'pending',
-        license TEXT DEFAULT 'pending',
-        rc TEXT DEFAULT 'pending',
-        insurance TEXT DEFAULT 'pending'
-    )
+        CREATE TABLE IF NOT EXISTS verification (
+            id         SERIAL PRIMARY KEY,
+            user_email TEXT,
+            aadhar     TEXT DEFAULT 'pending',
+            license    TEXT DEFAULT 'pending',
+            rc         TEXT DEFAULT 'pending',
+            insurance  TEXT DEFAULT 'pending'
+        )
     ''')
 
-    # 👤 Users
+    # ── Reviews ────────────────────────────
     cur.execute('''
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        email TEXT UNIQUE,
-        password TEXT,
-        phone TEXT,
-        bio TEXT,
-        photo TEXT,
-        avg_rating REAL DEFAULT 0.0,
-        total_ratings INTEGER DEFAULT 0
-    )
+        CREATE TABLE IF NOT EXISTS reviews (
+            id             SERIAL PRIMARY KEY,
+            ride_id        INTEGER,
+            reviewer_email TEXT,
+            reviewee_email TEXT,
+            reviewer_role  TEXT,
+            stars          INTEGER,
+            review_text    TEXT,
+            created_at     TEXT
+        )
     ''')
 
-    # ⭐ Reviews
+    # ── Notifications ──────────────────────
     cur.execute('''
-    CREATE TABLE IF NOT EXISTS reviews (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ride_id INTEGER,
-        reviewer_email TEXT,
-        reviewee_email TEXT,
-        reviewer_role TEXT,
-        stars INTEGER,
-        review_text TEXT,
-        created_at TEXT
-    )
+        CREATE TABLE IF NOT EXISTS notifications (
+            id         SERIAL PRIMARY KEY,
+            user_email TEXT,
+            message    TEXT,
+            is_read    INTEGER DEFAULT 0,
+            created_at TEXT
+        )
     ''')
 
-    # 💰 Commission config
+    # ── Cars ───────────────────────────────
     cur.execute('''
-    CREATE TABLE IF NOT EXISTS config (
-        key TEXT PRIMARY KEY,
-        value TEXT
-    )
+        CREATE TABLE IF NOT EXISTS cars (
+            id         SERIAL PRIMARY KEY,
+            user_email TEXT,
+            name       TEXT,
+            model      TEXT,
+            color      TEXT,
+            plate      TEXT,
+            images     TEXT
+        )
     ''')
 
-    # Default commission = 10%
-    cur.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('commission_pct', '10')")
-
-    # 🔔 Notifications
+    # ── Config ─────────────────────────────
     cur.execute('''
-    CREATE TABLE IF NOT EXISTS notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_email TEXT,
-        message TEXT,
-        is_read INTEGER DEFAULT 0,
-        created_at TEXT
-    )
+        CREATE TABLE IF NOT EXISTS config (
+            key   TEXT PRIMARY KEY,
+            value TEXT
+        )
+    ''')
+    cur.execute('''
+        INSERT INTO config (key, value)
+        VALUES ('commission_pct', '10')
+        ON CONFLICT (key) DO NOTHING
     ''')
 
-    # 🚗 My Car
-    cur.execute('''
-    CREATE TABLE IF NOT EXISTS cars (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        model TEXT,
-        color TEXT,
-        plate TEXT,
-        images TEXT
-    )
-    ''')
-
-    conn.commit()
-
-    # 🔧 Safe column migrations for existing DBs
+    # ── Safe column migrations for existing deployments ──
     safe_alters = [
-        "ALTER TABLE users ADD COLUMN phone TEXT",
-        "ALTER TABLE users ADD COLUMN bio TEXT",
-        "ALTER TABLE users ADD COLUMN photo TEXT",
-        "ALTER TABLE users ADD COLUMN avg_rating REAL DEFAULT 0.0",
-        "ALTER TABLE users ADD COLUMN total_ratings INTEGER DEFAULT 0",
-        "ALTER TABLE rides ADD COLUMN user_email TEXT",
-        "ALTER TABLE bookings ADD COLUMN user_email TEXT",
-        "ALTER TABLE emergency_contacts ADD COLUMN user_email TEXT",
-        "ALTER TABLE verification ADD COLUMN user_email TEXT",
-        "ALTER TABLE cars ADD COLUMN user_email TEXT",
+        "ALTER TABLE bookings  ADD COLUMN IF NOT EXISTS seats_booked INTEGER DEFAULT 1",
+        "ALTER TABLE bookings  ADD COLUMN IF NOT EXISTS user_email   TEXT",
+        "ALTER TABLE rides     ADD COLUMN IF NOT EXISTS user_email   TEXT",
+        "ALTER TABLE messages  ADD COLUMN IF NOT EXISTS ride_id      INTEGER",
+        "ALTER TABLE messages  ADD COLUMN IF NOT EXISTS is_read      INTEGER DEFAULT 0",
     ]
     for sql in safe_alters:
         try:
             cur.execute(sql)
-        except:
-            pass
-
-    # Default commission
-    cur.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('commission_pct', '10')")
+        except Exception:
+            conn.rollback()
 
     conn.commit()
+    cur.close()
     conn.close()
 
 
@@ -226,184 +241,163 @@ init_db()
 
 
 # ═══════════════════════════════════════════
-# 🧠 SMART RIDE STATUS HELPER
+# 🔔  CONTEXT PROCESSOR
 # ═══════════════════════════════════════════
+@app.context_processor
+def inject_counts():
+    if 'user_email' not in session:
+        return dict(notif_count=0, unread_msgs=0)
+    try:
+        me = session['user_email']
+        notif_count = query(
+            'SELECT COUNT(*) AS c FROM notifications WHERE user_email=%s AND is_read=0',
+            (me,), fetchone=True
+        )['c']
+        unread_msgs = query(
+            'SELECT COUNT(*) AS c FROM messages WHERE receiver=%s AND is_read=0',
+            (me,), fetchone=True
+        )['c']
+        return dict(notif_count=notif_count, unread_msgs=unread_msgs)
+    except Exception:
+        return dict(notif_count=0, unread_msgs=0)
 
+
+# ═══════════════════════════════════════════
+# 🧠  SMART STATUS + ENRICHMENT HELPERS
+# ═══════════════════════════════════════════
 def get_smart_status(ride):
-    """
-    Hybrid logic:
-    - If manually set to 'started' or 'completed' → respect that
-    - Otherwise auto-calculate from date+time
-    """
     manual = ride['status']
-
-    # Manual override takes priority
     if manual in ('started', 'completed'):
         return manual
-
     try:
-        ride_dt = datetime.strptime(
-            f"{ride['date']} {ride['time']}", "%Y-%m-%d %H:%M"
-        )
-    except:
-        return manual  # fallback if format is unexpected
-
+        ride_dt = datetime.strptime(f"{ride['date']} {ride['time']}", '%Y-%m-%d %H:%M')
+    except Exception:
+        return manual
     now = datetime.now()
-
     if now < ride_dt:
-        return 'not_started'           # future ride
+        return 'not_started'
     elif now < ride_dt + timedelta(hours=3):
-        return 'started'               # within 3hr window
+        return 'started'
     else:
-        return 'completed'             # past 3hr window
+        return 'completed'
 
 
 def enrich_rides(rides):
-    """Attach smart_status and countdown to each ride dict."""
     enriched = []
     now = datetime.now()
-
     for ride in rides:
         r = dict(ride)
         r['smart_status'] = get_smart_status(ride)
-
-        # Countdown string
         try:
-            ride_dt = datetime.strptime(
-                f"{ride['date']} {ride['time']}", "%Y-%m-%d %H:%M"
-            )
-            diff = ride_dt - now
-            if diff.total_seconds() > 0:
-                total_min = int(diff.total_seconds() // 60)
+            ride_dt = datetime.strptime(f"{ride['date']} {ride['time']}", '%Y-%m-%d %H:%M')
+            diff    = ride_dt - now
+            total_min = int(diff.total_seconds() // 60)
+            if total_min > 0:
                 hrs  = total_min // 60
                 mins = total_min % 60
                 if hrs > 24:
-                    days = hrs // 24
-                    r['countdown'] = f"Starts in {days}d {hrs % 24}h"
+                    r['countdown'] = f"Starts in {hrs//24}d {hrs%24}h"
                 elif hrs > 0:
                     r['countdown'] = f"Starts in {hrs}h {mins}m"
                 else:
                     r['countdown'] = f"Starts in {mins} min"
             elif r['smart_status'] == 'started':
-                r['countdown'] = "🟢 Ride in progress"
+                r['countdown'] = '🟢 Ride in progress'
             else:
-                r['countdown'] = "✅ Completed"
-        except:
-            r['countdown'] = ""
-
+                r['countdown'] = '✅ Completed'
+        except Exception:
+            r['countdown'] = ''
         enriched.append(r)
-
     return enriched
 
 
-def is_bookable(ride):
-    """Returns (can_book, reason) tuple."""
+def is_bookable(ride, requested_seats=1):
     smart = get_smart_status(ride)
     if smart == 'completed':
-        return False, "This ride has already completed"
+        return False, 'This ride has already completed'
     if smart == 'started':
-        return False, "This ride has already started"
+        return False, 'This ride has already started'
     if ride['seats'] <= 0:
-        return False, "No seats available"
-    return True, ""
+        return False, 'No seats available'
+    if ride['seats'] < requested_seats:
+        return False, f'Only {ride["seats"]} seat(s) left — you requested {requested_seats}'
+    return True, ''
 
 
-# 🏠 HOME
+# ═══════════════════════════════════════════
+# 🏠  HOME
+# ═══════════════════════════════════════════
 @app.route('/')
 def index():
-    conn = get_db()
     me = session.get('user_email', '')
 
-    # All available rides (not completed) for the available rides section
-    all_rides = conn.execute("SELECT * FROM rides ORDER BY id DESC").fetchall()
+    all_rides = query('SELECT * FROM rides ORDER BY id DESC', fetchall=True) or []
     enriched  = enrich_rides(all_rides)
     available = [r for r in enriched if r['smart_status'] in ('not_started', 'started')]
 
-    # User's own upcoming rides (offered + joined)
     my_upcoming = []
     if me:
-        my_offered = conn.execute(
-            "SELECT * FROM rides WHERE user_email=?", (me,)
-        ).fetchall()
-        my_joined = conn.execute('''
-            SELECT bookings.id as booking_id, rides.*, bookings.booked_at
-            FROM bookings JOIN rides ON bookings.ride_id = rides.id
-            WHERE bookings.user_email=?
-        ''', (me,)).fetchall()
+        my_offered = query('SELECT * FROM rides WHERE user_email=%s', (me,), fetchall=True) or []
+        my_joined  = query('''
+            SELECT b.id AS booking_id, b.seats_booked, r.*
+            FROM bookings b JOIN rides r ON b.ride_id = r.id
+            WHERE b.user_email=%s
+        ''', (me,), fetchall=True) or []
 
-        my_offered_e = enrich_rides(my_offered)
-        my_joined_e  = enrich_rides(my_joined)
+        offered_e = enrich_rides(my_offered)
+        joined_e  = enrich_rides(my_joined)
 
-        my_upcoming = [r for r in my_offered_e if r['smart_status'] in ('not_started','started')]
-        my_upcoming += [r for r in my_joined_e  if r['smart_status'] in ('not_started','started')]
-        # Sort by date
+        my_upcoming  = [r for r in offered_e if r['smart_status'] in ('not_started', 'started')]
+        my_upcoming += [r for r in joined_e  if r['smart_status'] in ('not_started', 'started')]
         my_upcoming.sort(key=lambda x: (x.get('date',''), x.get('time','')))
 
-    conn.close()
-    return render_template('index.html', rides=available, my_upcoming=my_upcoming)
+    return render_template('index.html', rides=available, my_upcoming_rides=my_upcoming)
 
 
-# 🚗 POST RIDE
+# ═══════════════════════════════════════════
+# 🚗  POST RIDE
+# ═══════════════════════════════════════════
 @app.route('/post', methods=['GET', 'POST'])
 def post_ride():
     if request.method == 'POST':
-        conn = get_db()
-
-        conn.execute('''
-        INSERT INTO rides (
-            from_loc, to_loc, date, time, seats, price,
-            music, smoking, luggage, stops,
-            gender, ac, pets, charging, status, user_email
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        query('''
+            INSERT INTO rides
+              (user_email, from_loc, to_loc, date, time, seats, price,
+               music, smoking, luggage, stops, gender, ac, pets, charging, status)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'not_started')
         ''', (
-            request.form['from'],
-            request.form['to'],
-            request.form['date'],
-            request.form['time'],
-            request.form['seats'],
-            request.form['price'],
-            request.form.get('music'),
-            request.form.get('smoking'),
-            request.form.get('luggage'),
-            request.form.get('stops'),
-            request.form.get('gender'),
-            request.form.get('ac'),
-            request.form.get('pets'),
-            request.form.get('charging'),
-            'not_started',
-            session.get('user_email', '')
-        ))
-
-        conn.commit()
-
-        conn.close()
+            session.get('user_email', ''),
+            request.form['from'], request.form['to'],
+            request.form['date'], request.form['time'],
+            int(request.form['seats']), int(request.form['price']),
+            request.form.get('music'),  request.form.get('smoking'),
+            request.form.get('luggage'), request.form.get('stops'),
+            request.form.get('gender'),  request.form.get('ac'),
+            request.form.get('pets'),    request.form.get('charging'),
+        ), commit=True)
         return redirect(url_for('index'))
-
     return render_template('post_ride.html')
 
 
-# 🔍 SEARCH PAGE
+# ═══════════════════════════════════════════
+# 🔍  SEARCH + RESULTS
+# ═══════════════════════════════════════════
 @app.route('/search')
 def search():
     return render_template('search.html')
 
 
-# 📄 RESULTS PAGE
 @app.route('/results', methods=['GET', 'POST'])
 def results():
-    conn = get_db()
-    all_rides = conn.execute("SELECT * FROM rides").fetchall()
-    conn.close()
-
     if request.method == 'GET':
         return render_template('results.html', rides=[])
 
-    # Normalize: lowercase + strip spaces for fuzzy location match
     def normalize(s):
         return s.lower().replace(' ', '') if s else ''
 
-    f = normalize(request.form.get('from', ''))
-    t = normalize(request.form.get('to', ''))
+    f  = normalize(request.form.get('from', ''))
+    t  = normalize(request.form.get('to',   ''))
+    requested_seats = int(request.form.get('seats_required', 1) or 1)
 
     ac       = request.form.get('ac')
     gender   = request.form.get('gender')
@@ -415,811 +409,641 @@ def results():
     charging = request.form.get('charging')
     sort     = request.form.get('sort')
 
-    # Collect user's preference filters (for warning display only — NOT for filtering out rides)
-    user_prefs = {
-        'ac': ac, 'gender': gender, 'smoking': smoking,
-        'music': music, 'luggage': luggage, 'stops': stops,
-        'pets': pets, 'charging': charging
-    }
+    user_prefs = dict(ac=ac, gender=gender, smoking=smoking, music=music,
+                      luggage=luggage, stops=stops, pets=pets, charging=charging)
+
+    all_rides = query('SELECT * FROM rides', fetchall=True) or []
 
     matched = []
     for ride in all_rides:
-        # Case + space insensitive location match
-        ride_from = normalize(ride['from_loc'])
-        ride_to   = normalize(ride['to_loc'])
-        if f in ride_from and t in ride_to:
+        rf = normalize(ride['from_loc'])
+        rt = normalize(ride['to_loc'])
+        if f in rf and t in rt:
             matched.append(ride)
-        # Also try partial match with original spacing
         elif f and t and f in ride['from_loc'].lower() and t in ride['to_loc'].lower():
-            matched.append(ride)
+            if ride not in matched:
+                matched.append(ride)
 
-    # Enrich and filter out completed
     enriched = enrich_rides(matched)
-    results  = [r for r in enriched if r['smart_status'] in ('not_started', 'started')]
 
-    # Sorting
-    if sort == "price":
-        results.sort(key=lambda x: int(x['price']))
-    elif sort == "seats":
-        results.sort(key=lambda x: int(x['seats']), reverse=True)
-    elif sort == "time":
-        results.sort(key=lambda x: x['time'])
+    # Only show rides with enough seats and not completed
+    filtered = [
+        r for r in enriched
+        if r['smart_status'] in ('not_started', 'started')
+        and r['seats'] >= requested_seats
+    ]
 
-    return render_template('results.html', rides=results, user_prefs=user_prefs)
+    # Mark full rides instead of hiding (bonus feature)
+    for r in filtered:
+        r['is_full'] = (r['seats'] == 0)
+
+    if sort == 'price':
+        filtered.sort(key=lambda x: int(x['price']))
+    elif sort == 'seats':
+        filtered.sort(key=lambda x: int(x['seats']), reverse=True)
+    elif sort == 'time':
+        filtered.sort(key=lambda x: x['time'])
+
+    return render_template('results.html', rides=filtered,
+                           user_prefs=user_prefs,
+                           requested_seats=requested_seats)
 
 
-# 📄 RIDE DETAIL + BOOK
+# ═══════════════════════════════════════════
+# 📄  RIDE DETAIL + MULTI-SEAT BOOKING
+# ═══════════════════════════════════════════
 @app.route('/ride/<int:id>', methods=['GET', 'POST'])
 def ride_detail(id):
-    conn = get_db()
-
-    ride = conn.execute(
-        "SELECT * FROM rides WHERE id=?",
-        (id,)
-    ).fetchone()
+    ride = query('SELECT * FROM rides WHERE id=%s', (id,), fetchone=True)
 
     if request.method == 'POST':
-        # Prevent owner from booking their own ride
         me_email = session.get('user_email', '')
-        if ride and dict(ride).get('user_email') == me_email:
-            ride_dict = dict(ride)
-            ride_dict['smart_status'] = get_smart_status(ride)
-            ride_dict['countdown'] = ''
-            conn.close()
-            return render_template('ride_detail.html',
-                ride=ride_dict,
-                error="You cannot book your own ride",
-                driver=None, driver_reviews=[], can_review=False, can_book=False)
 
-        can_book, book_error = is_bookable(ride) if ride else (False, "Ride not found")
+        # Owner cannot book own ride
+        if ride and ride.get('user_email') == me_email:
+            ride_e = dict(ride)
+            ride_e['smart_status'] = get_smart_status(ride)
+            ride_e['countdown'] = ''
+            return render_template('ride_detail.html', ride=ride_e,
+                                   error='You cannot book your own ride',
+                                   driver=None, driver_reviews=[], can_review=False)
+
+        # Read requested seats from form (default 1)
+        requested_seats = int(request.form.get('seats_required', 1) or 1)
+        can_book, book_error = is_bookable(ride, requested_seats) if ride else (False, 'Ride not found')
+
         if ride and can_book:
+            # Reduce seats atomically
+            query('UPDATE rides SET seats = seats - %s WHERE id=%s',
+                  (requested_seats, id), commit=True)
 
-            conn.execute(
-                "UPDATE rides SET seats = seats - 1 WHERE id=?",
-                (id,)
-            )
+            booked_at  = datetime.now().strftime('%d %b, %I:%M %p')
+            booking_id = query('''
+                INSERT INTO bookings (ride_id, user_email, seats_booked, booked_at)
+                VALUES (%s, %s, %s, %s)
+            ''', (id, me_email, requested_seats, booked_at), commit=True)
 
-            booked_at = datetime.now().strftime("%d %b, %I:%M %p")
+            # Notify booker
+            if me_email:
+                query('''INSERT INTO notifications (user_email, message, created_at)
+                         VALUES (%s,%s,%s)''',
+                      (me_email,
+                       f"🎟 Booking confirmed! {ride['from_loc']} → {ride['to_loc']} "
+                       f"on {ride['date']}. {requested_seats} seat(s). ID: #TRP{booking_id}",
+                       booked_at), commit=True)
 
-            conn.execute('''
-            INSERT INTO bookings (ride_id, booked_at, rating, user_email)
-            VALUES (?, ?, ?, ?)
-            ''', (
-                id,
-                booked_at,
-                None,
-                session.get('user_email', '')
-            ))
+            # Notify driver
+            owner = ride.get('user_email', '')
+            if owner and owner != me_email:
+                booker_name = session.get('user_name', me_email.split('@')[0])
+                query('''INSERT INTO notifications (user_email, message, created_at)
+                         VALUES (%s,%s,%s)''',
+                      (owner,
+                       f"🎉 {booker_name} booked {requested_seats} seat(s) on your ride: "
+                       f"{ride['from_loc']} → {ride['to_loc']}",
+                       booked_at), commit=True)
 
-            conn.commit()
-
-            # Get the booking ID just created
-            booking_id = conn.execute(
-                "SELECT last_insert_rowid()"
-            ).fetchone()[0]
-
-            # 🔔 Notify booker
-            from flask import session as sess
-            booker_email = sess.get('user_email', '')
-            booker_name  = sess.get('user_name', 'Someone')
-            if booker_email:
-                conn.execute('''
-                INSERT INTO notifications (user_email, message, created_at)
-                VALUES (?, ?, ?)
-                ''', (
-                    booker_email,
-                    f"🎟 Booking confirmed! {ride['from_loc']} → {ride['to_loc']} on {ride['date']}. ID: #TRP{booking_id}",
-                    booked_at
-                ))
-                conn.commit()
-
-            # 🔔 Notify ride owner about new booking
-            ride_owner = dict(ride).get('user_email', '')
-            if ride_owner and ride_owner != booker_email:
-                conn.execute('''
-                INSERT INTO notifications (user_email, message, created_at)
-                VALUES (?, ?, ?)
-                ''', (
-                    ride_owner,
-                    f"🎉 {booker_name} booked a seat on your ride: {ride['from_loc']} → {ride['to_loc']}",
-                    booked_at
-                ))
-                conn.commit()
-
-            ride = conn.execute(
-                "SELECT * FROM rides WHERE id=?",
-                (id,)
-            ).fetchone()
-
-            conn.close()
-
-            return render_template(
-                'ride_detail.html',
-                ride=ride,
-                booked=True,
-                booking_id=booking_id,
-                booked_at=booked_at
-            )
-
+            ride = query('SELECT * FROM rides WHERE id=%s', (id,), fetchone=True)
+            return render_template('ride_detail.html', ride=ride,
+                                   booked=True, booking_id=booking_id,
+                                   booked_at=booked_at,
+                                   seats_booked=requested_seats)
         else:
-            # Enrich ride with smart status before returning error
-            ride_dict = dict(ride) if ride else {}
-            ride_dict['smart_status'] = get_smart_status(ride) if ride else 'not_started'
-            ride_dict['countdown'] = ''
-            conn.close()
-            return render_template(
-                'ride_detail.html',
-                ride=ride_dict,
-                error=book_error,
-                driver=None,
-                driver_reviews=[],
-                driver_car=None,
-                can_review=False,
-                can_book=False
-            )
+            ride_e = dict(ride) if ride else {}
+            ride_e['smart_status'] = get_smart_status(ride) if ride else 'not_started'
+            ride_e['countdown'] = ''
+            return render_template('ride_detail.html', ride=ride_e,
+                                   error=book_error, driver=None,
+                                   driver_reviews=[], driver_car=None,
+                                   can_review=False, can_book=False)
 
-    # Load driver info and reviews
-    driver = None
+    # ── GET ──────────────────────────────────
+    driver        = None
     driver_reviews = []
-    can_review = False
+    driver_car    = None
+    can_review    = False
+
     if ride:
-        # Fetch actual driver using ride's user_email
-        ride_user_email = dict(ride).get('user_email', '')
-        if ride_user_email:
-            driver = conn.execute(
-                "SELECT * FROM users WHERE email=?", (ride_user_email,)
-            ).fetchone()
-        else:
-            driver = None
-        driver_reviews = conn.execute(
-            "SELECT stars, review_text, reviewer_role, created_at FROM reviews WHERE ride_id=? ORDER BY id DESC", (id,)
-        ).fetchall()
-        # Fetch driver's car (never expose reviewer identity)
-        driver_car = conn.execute(
-            "SELECT name, model, color, plate FROM cars WHERE user_email=? LIMIT 1",
-            (ride_user_email,)
-        ).fetchone() if ride_user_email else None
-        # Can review if completed and logged in
-        if 'user_email' in session and ride['status'] == 'completed':
-            existing = conn.execute(
-                "SELECT id FROM reviews WHERE ride_id=? AND reviewer_email=?",
-                (id, session['user_email'])
-            ).fetchone()
+        owner_email = ride.get('user_email', '')
+        if owner_email:
+            driver     = query('SELECT * FROM users WHERE email=%s', (owner_email,), fetchone=True)
+            driver_car = query('SELECT name,model,color,plate FROM cars WHERE user_email=%s LIMIT 1',
+                               (owner_email,), fetchone=True)
+        driver_reviews = query(
+            'SELECT stars,review_text,reviewer_role,created_at FROM reviews WHERE ride_id=%s ORDER BY id DESC',
+            (id,), fetchall=True) or []
+
+        me = session.get('user_email', '')
+        if me and ride['status'] == 'completed':
+            existing = query('SELECT id FROM reviews WHERE ride_id=%s AND reviewer_email=%s',
+                             (id, me), fetchone=True)
             can_review = not existing
 
-    # Check ownership and existing booking
-    me_email = session.get('user_email', '')
-    is_owner = False
+    me_email      = session.get('user_email', '')
+    is_owner      = ride and ride.get('user_email') == me_email
     already_booked = False
-    if ride:
-        is_owner = dict(ride).get('user_email', '') == me_email
-        existing_booking = conn.execute(
-            "SELECT id FROM bookings WHERE ride_id=? AND user_email=?",
-            (id, me_email)
-        ).fetchone()
-        already_booked = existing_booking is not None
+    seats_booked_by_me = 0
 
-    conn.close()
-    # Enrich with smart status + countdown
+    if ride and me_email:
+        bk = query('SELECT id, seats_booked FROM bookings WHERE ride_id=%s AND user_email=%s',
+                   (id, me_email), fetchone=True)
+        already_booked     = bk is not None
+        seats_booked_by_me = bk['seats_booked'] if bk else 0
+
     ride_e = dict(ride) if ride else None
     if ride_e:
         ride_e['smart_status'] = get_smart_status(ride)
-        # Countdown
         try:
-            ride_dt = datetime.strptime(f"{ride['date']} {ride['time']}", "%Y-%m-%d %H:%M")
-            diff = ride_dt - datetime.now()
+            ride_dt   = datetime.strptime(f"{ride['date']} {ride['time']}", '%Y-%m-%d %H:%M')
+            diff      = ride_dt - datetime.now()
             total_min = int(diff.total_seconds() // 60)
             if total_min > 0:
                 hrs  = total_min // 60
                 mins = total_min % 60
                 ride_e['countdown'] = f"Starts in {hrs}h {mins}m" if hrs > 0 else f"Starts in {mins} min"
             elif ride_e['smart_status'] == 'started':
-                ride_e['countdown'] = "🟢 Ride in progress"
+                ride_e['countdown'] = '🟢 Ride in progress'
             else:
-                ride_e['countdown'] = "✅ Ride completed"
-        except:
-            ride_e['countdown'] = ""
+                ride_e['countdown'] = '✅ Ride completed'
+        except Exception:
+            ride_e['countdown'] = ''
         can_book, _ = is_bookable(ride)
     else:
         can_book = False
 
-    return render_template('ride_detail.html', ride=ride_e,
-        driver=driver, driver_reviews=driver_reviews,
-        driver_car=driver_car,
-        can_review=can_review, can_book=can_book,
-        is_owner=is_owner, already_booked=already_booked)
+    return render_template('ride_detail.html',
+                           ride=ride_e,
+                           driver=driver, driver_reviews=driver_reviews,
+                           driver_car=driver_car,
+                           can_review=can_review, can_book=can_book,
+                           is_owner=is_owner, already_booked=already_booked,
+                           seats_booked_by_me=seats_booked_by_me,
+                           verify=None)
 
 
-# 🚀 START RIDE
+# ═══════════════════════════════════════════
+# 🚀  START / END RIDE
+# ═══════════════════════════════════════════
 @app.route('/start/<int:id>')
 def start_ride(id):
-    conn = get_db()
-    conn.execute("UPDATE rides SET status='started' WHERE id=?", (id,))
-    conn.commit()
-    conn.close()
+    query("UPDATE rides SET status='started' WHERE id=%s", (id,), commit=True)
     return redirect(url_for('profile'))
 
 
-# 🛑 END RIDE
 @app.route('/end/<int:id>')
 def end_ride(id):
-    conn = get_db()
-    conn.execute("UPDATE rides SET status='completed' WHERE id=?", (id,))
-    conn.commit()
-    conn.close()
+    query("UPDATE rides SET status='completed' WHERE id=%s", (id,), commit=True)
     return redirect(url_for('profile'))
 
 
-# 📊 SUMMARY
+# ═══════════════════════════════════════════
+# 📊  SUMMARY
+# ═══════════════════════════════════════════
 @app.route('/summary')
 def summary():
-    conn = get_db()
-    all_rides = conn.execute("SELECT * FROM rides").fetchall()
-    rides = [r for r in enrich_rides(all_rides) if r['smart_status'] == 'completed']
+    me = session.get('user_email', '')
+    all_rides = query('SELECT * FROM rides WHERE user_email=%s', (me,), fetchall=True) or []
+    rides     = [r for r in enrich_rides(all_rides) if r['smart_status'] == 'completed']
 
-    # Commission %
-    try:
-        cfg = conn.execute("SELECT value FROM config WHERE key='commission_pct'").fetchone()
-        commission_pct = int(cfg['value']) if cfg else 10
-    except:
-        commission_pct = 10
+    cfg = query("SELECT value FROM config WHERE key='commission_pct'", fetchone=True)
+    commission_pct = int(cfg['value']) if cfg else 10
 
-    # 💰 Earnings calculations
-    total_earnings     = sum(int(r['price']) for r in rides)
-    total_rides        = len(rides)
-    avg_earning        = round(total_earnings / total_rides, 0) if total_rides > 0 else 0
-    best_ride          = max(rides, key=lambda r: int(r['price'])) if rides else None
-    total_commission   = round(total_earnings * commission_pct / 100, 0)
-    driver_payout      = total_earnings - total_commission
+    total_earnings   = sum(int(r['price']) for r in rides)
+    total_rides      = len(rides)
+    avg_earning      = round(total_earnings / total_rides, 0) if total_rides > 0 else 0
+    best_ride        = max(rides, key=lambda r: int(r['price'])) if rides else None
+    total_commission = round(total_earnings * commission_pct / 100, 0)
+    driver_payout    = total_earnings - total_commission
 
-    conn.close()
     return render_template('summary.html',
-        rides=rides,
-        total_earnings=total_earnings,
-        total_rides=total_rides,
-        avg_earning=avg_earning,
-        best_ride=best_ride,
-        commission_pct=commission_pct,
-        total_commission=total_commission,
-        driver_payout=driver_payout
-    )
+                           rides=rides, total_earnings=total_earnings,
+                           total_rides=total_rides, avg_earning=avg_earning,
+                           best_ride=best_ride, commission_pct=commission_pct,
+                           total_commission=total_commission, driver_payout=driver_payout)
 
 
-# 👤 PROFILE
+# ═══════════════════════════════════════════
+# 👤  PROFILE
+# ═══════════════════════════════════════════
 @app.route('/profile')
 def profile():
-    conn = get_db()
+    if 'user_email' not in session:
+        return redirect(url_for('login'))
 
-    # Get current user email
-    me = session.get('user_email', '')
+    me = session['user_email']
 
-    # Only THIS user's rides and bookings
-    all_offered = conn.execute(
-        "SELECT * FROM rides WHERE user_email=?", (me,)
-    ).fetchall()
-    all_joined = conn.execute('''
-        SELECT bookings.id as booking_id, rides.*, bookings.booked_at, bookings.rating
-        FROM bookings JOIN rides ON bookings.ride_id = rides.id
-        WHERE bookings.user_email=?
-    ''', (me,)).fetchall()
+    all_offered = query('SELECT * FROM rides WHERE user_email=%s', (me,), fetchall=True) or []
+    all_joined  = query('''
+        SELECT b.id AS booking_id, b.seats_booked, b.rating, b.booked_at, r.*
+        FROM bookings b JOIN rides r ON b.ride_id = r.id
+        WHERE b.user_email=%s
+    ''', (me,), fetchall=True) or []
 
-    # Enrich with smart status
-    all_offered_e = enrich_rides(all_offered)
-    all_joined_e  = enrich_rides(all_joined)
+    offered_e = enrich_rides(all_offered)
+    joined_e  = enrich_rides(all_joined)
 
-    # Filtered for display sections using smart_status
-    active_offered    = [r for r in all_offered_e if r['smart_status'] == 'started']
-    active_joined     = [r for r in all_joined_e  if r['smart_status'] == 'started']
-    upcoming_offered  = [r for r in all_offered_e if r['smart_status'] == 'not_started']
-    upcoming_joined   = [r for r in all_joined_e  if r['smart_status'] == 'not_started']
-    completed_offered = [r for r in all_offered_e if r['smart_status'] == 'completed']
-    completed_joined  = [r for r in all_joined_e  if r['smart_status'] == 'completed']
-    upcoming          = upcoming_offered + upcoming_joined
+    active_offered    = [r for r in offered_e if r['smart_status'] == 'started']
+    active_joined     = [r for r in joined_e  if r['smart_status'] == 'started']
+    upcoming_offered  = [r for r in offered_e if r['smart_status'] == 'not_started']
+    upcoming_joined   = [r for r in joined_e  if r['smart_status'] == 'not_started']
+    completed_offered = [r for r in offered_e if r['smart_status'] == 'completed']
+    completed_joined  = [r for r in joined_e  if r['smart_status'] == 'completed']
 
-    # Strictly user-specific — no fallback to other users' data
-    contacts = conn.execute(
-        "SELECT * FROM emergency_contacts WHERE user_email=? LIMIT 1", (me,)
-    ).fetchone()
+    contacts = query('SELECT * FROM emergency_contacts WHERE user_email=%s LIMIT 1',
+                     (me,), fetchone=True)
+    verify   = query('SELECT * FROM verification WHERE user_email=%s LIMIT 1',
+                     (me,), fetchone=True)
+    car      = query('SELECT * FROM cars WHERE user_email=%s LIMIT 1',
+                     (me,), fetchone=True)
 
-    verify = conn.execute(
-        "SELECT * FROM verification WHERE user_email=? LIMIT 1", (me,)
-    ).fetchone()
+    db_user = query('SELECT * FROM users WHERE email=%s', (me,), fetchone=True)
+    reviews_received = query(
+        'SELECT * FROM reviews WHERE reviewee_email=%s ORDER BY id DESC',
+        (me,), fetchall=True) or []
 
-    car = conn.execute(
-        "SELECT * FROM cars WHERE user_email=? LIMIT 1", (me,)
-    ).fetchone()
-
-    # Load user from DB if logged in
-    db_user = None
-    reviews_received = []
-    if 'user_email' in session:
-        db_user = conn.execute(
-            "SELECT * FROM users WHERE email=?", (session['user_email'],)
-        ).fetchone()
-        try:
-            reviews_received = conn.execute(
-                "SELECT * FROM reviews WHERE reviewee_email=? ORDER BY id DESC",
-                (session['user_email'],)
-            ).fetchall()
-        except:
-            reviews_received = []
-
-    # Safe user dict — handles missing columns gracefully
-    if db_user:
-        db_user_dict = dict(db_user)
-    else:
-        db_user_dict = {}
-
+    db_user_dict = dict(db_user) if db_user else {}
     user = {
-        "name":          db_user_dict.get('name', session.get('user_name', 'Guest')),
-        "email":         db_user_dict.get('email', session.get('user_email', '')),
-        "phone":         db_user_dict.get('phone', ''),
-        "bio":           db_user_dict.get('bio', ''),
-        "photo":         db_user_dict.get('photo', ''),
-        "avg_rating":    db_user_dict.get('avg_rating', 0.0) or 0.0,
-        "total_ratings": db_user_dict.get('total_ratings', 0) or 0,
-        "total_rides":   len(all_offered) + len(all_joined),  # only this user's rides
-        "documents":     ["Aadhar Card", "Driving License", "RC Book", "Insurance"]
+        'name':          db_user_dict.get('name',          session.get('user_name', 'Guest')),
+        'email':         db_user_dict.get('email',         me),
+        'phone':         db_user_dict.get('phone',         ''),
+        'bio':           db_user_dict.get('bio',           ''),
+        'photo':         db_user_dict.get('photo',         ''),
+        'avg_rating':    db_user_dict.get('avg_rating',    0.0) or 0.0,
+        'total_ratings': db_user_dict.get('total_ratings', 0)   or 0,
+        'total_rides':   len(all_offered) + len(all_joined),
+        'documents':     ['Aadhar Card', 'Driving License', 'RC Book', 'Insurance'],
     }
 
-    conn.close()
-
-    return render_template(
-        'profile.html',
-        user=user,
-        offered=all_offered_e,
-        joined=all_joined_e,
-        active_offered=active_offered,
-        active_joined=active_joined,
-        upcoming_offered=upcoming_offered,
-        upcoming_joined=upcoming_joined,
-        completed_offered=completed_offered,
-        completed_joined=completed_joined,
-        upcoming=upcoming,
-        contacts=contacts,
-        verify=verify,
-        car=car,
-        reviews_received=reviews_received
-    )
+    return render_template('profile.html',
+                           user=user,
+                           offered=offered_e, joined=joined_e,
+                           active_offered=active_offered,   active_joined=active_joined,
+                           upcoming_offered=upcoming_offered, upcoming_joined=upcoming_joined,
+                           completed_offered=completed_offered, completed_joined=completed_joined,
+                           upcoming=upcoming_offered + upcoming_joined,
+                           contacts=contacts, verify=verify, car=car,
+                           reviews_received=reviews_received)
 
 
-# ❌ CANCEL BOOKING
+# ═══════════════════════════════════════════
+# ❌  CANCEL BOOKING
+# ═══════════════════════════════════════════
 @app.route('/cancel/<int:id>')
 def cancel_booking(id):
-    conn = get_db()
-
-    booking = conn.execute(
-        "SELECT * FROM bookings WHERE id=?",
-        (id,)
-    ).fetchone()
-
+    booking = query('SELECT * FROM bookings WHERE id=%s', (id,), fetchone=True)
     if booking:
-        conn.execute(
-            "UPDATE rides SET seats = seats + 1 WHERE id=?",
-            (booking['ride_id'],)
-        )
-        conn.execute("DELETE FROM bookings WHERE id=?", (id,))
-        conn.commit()
-
-    conn.close()
+        query('UPDATE rides SET seats = seats + %s WHERE id=%s',
+              (booking['seats_booked'], booking['ride_id']), commit=True)
+        query('DELETE FROM bookings WHERE id=%s', (id,), commit=True)
     return redirect(url_for('profile'))
 
 
-# ⭐ RATE
+# ═══════════════════════════════════════════
+# ⭐  RATE
+# ═══════════════════════════════════════════
 @app.route('/rate/<int:id>', methods=['POST'])
 def rate(id):
-    conn = get_db()
-    rating = request.form.get('rating')
-    conn.execute("UPDATE bookings SET rating=? WHERE id=?", (rating, id))
-    conn.commit()
-    conn.close()
+    query('UPDATE bookings SET rating=%s WHERE id=%s',
+          (request.form.get('rating'), id), commit=True)
     return redirect(url_for('profile'))
 
 
-# 💬 INBOX
+# ═══════════════════════════════════════════
+# 💬  INBOX
+# ═══════════════════════════════════════════
 @app.route('/inbox')
 def inbox():
     if 'user_email' not in session:
         return redirect(url_for('login'))
 
-    conn = get_db()
-    me   = session.get('user_email', '')
-
-    # Get all unique conversations for this user
-    # Group by (other_email, ride_id) so each ride has one thread
-    raw = conn.execute('''
+    me = session['user_email']
+    raw = query('''
         SELECT
-            CASE WHEN sender=? THEN receiver ELSE sender END AS other_email,
+            CASE WHEN sender=%s THEN receiver ELSE sender END AS other_email,
             ride_id,
             message,
             time,
-            MAX(id) as last_id,
-            SUM(CASE WHEN receiver=? AND is_read=0 THEN 1 ELSE 0 END) as unread
+            MAX(id) AS last_id,
+            SUM(CASE WHEN receiver=%s AND is_read=0 THEN 1 ELSE 0 END) AS unread
         FROM messages
-        WHERE sender=? OR receiver=?
+        WHERE sender=%s OR receiver=%s
         GROUP BY other_email, ride_id
         ORDER BY last_id DESC
-    ''', (me, me, me, me)).fetchall()
+    ''', (me, me, me, me), fetchall=True) or []
 
     chats = []
     for row in raw:
-        other_email = row['other_email']
-        other_user  = conn.execute(
-            "SELECT name FROM users WHERE email=?", (other_email,)
-        ).fetchone()
-        display_name = other_user['name'] if other_user else other_email.split('@')[0]
-
+        other     = row['other_email']
+        other_user = query('SELECT name FROM users WHERE email=%s', (other,), fetchone=True)
+        display_name = other_user['name'] if other_user else other.split('@')[0]
         ride_info = None
         if row['ride_id']:
-            ride_info = conn.execute(
-                "SELECT from_loc, to_loc FROM rides WHERE id=?",
-                (row['ride_id'],)
-            ).fetchone()
-
+            ride_info = query('SELECT from_loc, to_loc FROM rides WHERE id=%s',
+                              (row['ride_id'],), fetchone=True)
         chats.append({
-            'user':         other_email,
-            'display_name': display_name,
-            'message':      row['message'],
-            'time':         row['time'],
-            'ride_id':      row['ride_id'],
-            'ride_info':    ride_info,
-            'unread':       row['unread'] or 0
+            'user': other, 'display_name': display_name,
+            'message': row['message'], 'time': row['time'],
+            'ride_id': row['ride_id'], 'ride_info': ride_info,
+            'unread': row['unread'] or 0,
         })
 
-    # Total unread count
     total_unread = sum(c['unread'] for c in chats)
-
-    conn.close()
     return render_template('inbox.html', chats=chats, me=me, total_unread=total_unread)
 
 
-# 💬 CHAT
+# ═══════════════════════════════════════════
+# 💬  CHAT
+# ═══════════════════════════════════════════
 @app.route('/chat/<user>', methods=['GET', 'POST'])
 def chat(user):
     if 'user_email' not in session:
         return redirect(url_for('login'))
 
-    conn = get_db()
-    me   = session.get('user_email', '')
-    rid  = request.args.get('ride_id') or request.form.get('ride_id')
+    me  = session['user_email']
+    rid = request.args.get('ride_id') or request.form.get('ride_id')
 
-    # Check ride is not completed/archived — block messaging if so
     ride_context = None
     chat_blocked = False
     if rid:
-        ride_context = conn.execute("SELECT * FROM rides WHERE id=?", (rid,)).fetchone()
-        if ride_context:
-            smart = get_smart_status(ride_context)
-            if smart == 'completed':
-                chat_blocked = True
+        ride_context = query('SELECT * FROM rides WHERE id=%s', (rid,), fetchone=True)
+        if ride_context and get_smart_status(ride_context) == 'completed':
+            chat_blocked = True
 
     if request.method == 'POST' and not chat_blocked:
         msg_text = request.form.get('message', '').strip()
         if msg_text and user != me:
-            now_time = datetime.now().strftime("%H:%M")
-            now_full = datetime.now().strftime("%d %b, %I:%M %p")
-
-            conn.execute('''
-            INSERT INTO messages (sender, receiver, message, time, ride_id, is_read)
-            VALUES (?, ?, ?, ?, ?, 0)
-            ''', (me, user, msg_text, now_time, rid))
-            conn.commit()
-
-            # 🔔 Notify receiver only
-            if user and user != me:
-                sender_name = session.get('user_name', me.split('@')[0])
-                ride_label  = f" on ride {ride_context['from_loc']} → {ride_context['to_loc']}" if ride_context else ""
-                conn.execute('''
-                INSERT INTO notifications (user_email, message, is_read, created_at)
-                VALUES (?, ?, 0, ?)
-                ''', (user, f"💬 {sender_name}: {msg_text[:40]}{ride_label}", now_full))
-                conn.commit()
-
+            now_time = datetime.now().strftime('%H:%M')
+            now_full = datetime.now().strftime('%d %b, %I:%M %p')
+            query('''INSERT INTO messages (sender,receiver,message,time,ride_id,is_read)
+                     VALUES (%s,%s,%s,%s,%s,0)''',
+                  (me, user, msg_text, now_time, rid), commit=True)
+            sender_name = session.get('user_name', me.split('@')[0])
+            ride_label  = (f" on ride {ride_context['from_loc']} → {ride_context['to_loc']}"
+                           if ride_context else '')
+            query('''INSERT INTO notifications (user_email,message,is_read,created_at)
+                     VALUES (%s,%s,0,%s)''',
+                  (user, f"💬 {sender_name}: {msg_text[:40]}{ride_label}", now_full),
+                  commit=True)
         return redirect(url_for('chat', user=user, ride_id=rid or ''))
 
-    # Mark messages as read
-    conn.execute('''
-        UPDATE messages SET is_read=1
-        WHERE receiver=? AND sender=? AND (ride_id=? OR (ride_id IS NULL AND ? IS NULL))
-    ''', (me, user, rid, rid))
-    conn.commit()
+    # Mark as read
+    query('''UPDATE messages SET is_read=1
+             WHERE receiver=%s AND sender=%s AND (ride_id=%s OR (ride_id IS NULL AND %s IS NULL))''',
+          (me, user, rid, rid), commit=True)
 
-    # Fetch messages for this specific conversation (same ride_id)
     if rid:
-        messages = conn.execute('''
+        messages = query('''
             SELECT * FROM messages
-            WHERE ((sender=? AND receiver=?) OR (sender=? AND receiver=?))
-            AND ride_id=?
-            ORDER BY id
-        ''', (me, user, user, me, rid)).fetchall()
+            WHERE ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s))
+            AND ride_id=%s ORDER BY id
+        ''', (me, user, user, me, rid), fetchall=True) or []
     else:
-        messages = conn.execute('''
+        messages = query('''
             SELECT * FROM messages
-            WHERE ((sender=? AND receiver=?) OR (sender=? AND receiver=?))
-            AND (ride_id IS NULL OR ride_id='')
+            WHERE ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s))
+            AND (ride_id IS NULL OR ride_id::text='')
             ORDER BY id
-        ''', (me, user, user, me)).fetchall()
+        ''', (me, user, user, me), fetchall=True) or []
 
-    # Resolve names
-    other_user   = conn.execute("SELECT * FROM users WHERE email=?", (user,)).fetchone()
-    display_name = other_user['name'] if other_user else user.split('@')[0] if '@' in user else user
+    other_user   = query('SELECT * FROM users WHERE email=%s', (user,), fetchone=True)
+    display_name = other_user['name'] if other_user else (user.split('@')[0] if '@' in user else user)
 
-    conn.close()
     return render_template('chat.html',
-        messages=messages, user=user, me=me,
-        display_name=display_name,
-        ride_context=ride_context,
-        ride_id=rid,
-        chat_blocked=chat_blocked)
+                           messages=messages, user=user, me=me,
+                           display_name=display_name,
+                           ride_context=ride_context, ride_id=rid,
+                           chat_blocked=chat_blocked)
 
 
-# 📞 EMERGENCY CONTACTS
+# ═══════════════════════════════════════════
+# 📞  EMERGENCY CONTACTS
+# ═══════════════════════════════════════════
 @app.route('/emergency', methods=['GET', 'POST'])
 def emergency():
-    conn = get_db()
-
+    me = session.get('user_email', '')
     if request.method == 'POST':
-        conn.execute(
-            "DELETE FROM emergency_contacts WHERE user_email=?",
-            (session.get('user_email', ''),)
-        )
-        conn.execute('''
-        INSERT INTO emergency_contacts (name1, phone1, name2, phone2, user_email)
-        VALUES (?, ?, ?, ?, ?)
-        ''', (
-            request.form.get('name1'),
-            request.form.get('phone1'),
-            request.form.get('name2'),
-            request.form.get('phone2'),
-            session.get('user_email', '')
-        ))
-        conn.commit()
-        conn.close()
+        query('DELETE FROM emergency_contacts WHERE user_email=%s', (me,), commit=True)
+        query('''INSERT INTO emergency_contacts (user_email,name1,phone1,name2,phone2)
+                 VALUES (%s,%s,%s,%s,%s)''',
+              (me, request.form.get('name1'), request.form.get('phone1'),
+               request.form.get('name2'), request.form.get('phone2')), commit=True)
         return redirect(url_for('profile'))
-
-    contacts = conn.execute(
-        "SELECT * FROM emergency_contacts WHERE user_email=? LIMIT 1",
-        (session.get('user_email', ''),)
-    ).fetchone()
-    conn.close()
+    contacts = query('SELECT * FROM emergency_contacts WHERE user_email=%s LIMIT 1',
+                     (me,), fetchone=True)
     return render_template('emergency.html', contacts=contacts)
 
 
-# ✅ DRIVER VERIFICATION
+# ═══════════════════════════════════════════
+# ✅  DRIVER VERIFICATION  (Cloudinary upload)
+# ═══════════════════════════════════════════
 @app.route('/verify', methods=['GET', 'POST'])
 def verify():
-    conn = get_db()
-
+    me = session.get('user_email', '')
     if request.method == 'POST':
-        conn.execute(
-            "DELETE FROM verification WHERE user_email=?",
-            (session.get('user_email', ''),)
-        )
-        conn.execute('''
-        INSERT INTO verification (aadhar, license, rc, insurance, user_email)
-        VALUES (?, ?, ?, ?, ?)
-        ''', (
-            'uploaded' if request.form.get('aadhar') else 'pending',
-            'uploaded' if request.form.get('license') else 'pending',
-            'uploaded' if request.form.get('rc') else 'pending',
-            'uploaded' if request.form.get('insurance') else 'pending',
-            session.get('user_email', '')
-        ))
-        conn.commit()
-        conn.close()
+        existing = query('SELECT * FROM verification WHERE user_email=%s LIMIT 1',
+                         (me,), fetchone=True)
+
+        def upload_doc(field):
+            f = request.files.get(field)
+            if f and f.filename:
+                url = upload_to_cloudinary(f, folder='tripzy/docs')
+                return ('uploaded', url) if url else ('pending', '')
+            # Keep existing URL if no new file uploaded
+            if existing:
+                return existing[field], existing.get(field + '_url', '')
+            return 'pending', ''
+
+        aadhar_s,   aadhar_url   = upload_doc('aadhar')
+        license_s,  license_url  = upload_doc('license')
+        rc_s,       rc_url       = upload_doc('rc')
+        insurance_s, ins_url     = upload_doc('insurance')
+
+        query('DELETE FROM verification WHERE user_email=%s', (me,), commit=True)
+        query('''INSERT INTO verification
+                   (user_email, aadhar, license, rc, insurance)
+                 VALUES (%s,%s,%s,%s,%s)''',
+              (me, aadhar_s, license_s, rc_s, insurance_s), commit=True)
         return redirect(url_for('profile'))
 
-    verify_data = conn.execute(
-        "SELECT * FROM verification WHERE user_email=? LIMIT 1",
-        (session.get('user_email', ''),)
-    ).fetchone()
-    conn.close()
+    verify_data = query('SELECT * FROM verification WHERE user_email=%s LIMIT 1',
+                        (me,), fetchone=True)
     return render_template('verify.html', verify=verify_data)
 
 
-# 📍 LIVE TRACKING PAGE
+# ═══════════════════════════════════════════
+# 📍  LIVE TRACKING
+# ═══════════════════════════════════════════
 @app.route('/track/<int:id>')
 def track(id):
-    conn = get_db()
-    ride = conn.execute("SELECT * FROM rides WHERE id=?", (id,)).fetchone()
-    conn.close()
+    ride = query('SELECT * FROM rides WHERE id=%s', (id,), fetchone=True)
     return render_template('track.html', ride=ride)
 
 
-# 🚗 MY CAR
+# ═══════════════════════════════════════════
+# 🚗  MY CAR  (Cloudinary upload)
+# ═══════════════════════════════════════════
 @app.route('/my-car', methods=['GET', 'POST'])
 def my_car():
-    conn = get_db()
-
+    me = session.get('user_email', '')
     if request.method == 'POST':
-        # Get base64 images data (joined by ||)
-        images_data = request.form.get('images_data', '')
+        # Handle multiple image uploads to Cloudinary
+        files        = request.files.getlist('images')
+        image_urls   = []
+        for f in files[:5]:
+            if f and f.filename:
+                url = upload_to_cloudinary(f, folder='tripzy/cars')
+                if url:
+                    image_urls.append(url)
 
-        conn.execute("DELETE FROM cars WHERE user_email=?", (session.get("user_email", ""),))
-        conn.execute('''
-        INSERT INTO cars (name, model, color, plate, images, user_email)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ''', (
-            request.form.get('name'),
-            request.form.get('model'),
-            request.form.get('color'),
-            request.form.get('plate').upper(),
-            images_data,
-            session.get('user_email', '')
-        ))
-        conn.commit()
-        conn.close()
+        # Fallback: base64 data from hidden field (existing behaviour)
+        if not image_urls:
+            images_data = request.form.get('images_data', '')
+            image_urls  = [u for u in images_data.split('||') if u]
+
+        query('DELETE FROM cars WHERE user_email=%s', (me,), commit=True)
+        query('''INSERT INTO cars (user_email, name, model, color, plate, images)
+                 VALUES (%s,%s,%s,%s,%s,%s)''',
+              (me,
+               request.form.get('name'), request.form.get('model'),
+               request.form.get('color'), (request.form.get('plate') or '').upper(),
+               '||'.join(image_urls)), commit=True)
         return redirect(url_for('my_car'))
 
-    car = conn.execute(
-        "SELECT * FROM cars WHERE user_email=? LIMIT 1",
-        (session.get('user_email', ''),)
-    ).fetchone()
-    conn.close()
+    car = query('SELECT * FROM cars WHERE user_email=%s LIMIT 1', (me,), fetchone=True)
     return render_template('my_car.html', car=car)
 
 
-# 🔐 REGISTER
+# ═══════════════════════════════════════════
+# 🔐  REGISTER / LOGIN / LOGOUT
+# ═══════════════════════════════════════════
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        name  = request.form.get('name')
-        email = request.form.get('email')
-        pwd   = request.form.get('password')
-        conn  = get_db()
         try:
-            conn.execute(
-                "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-                (name, email, pwd)
-            )
-            conn.commit()
-            conn.close()
+            query('''INSERT INTO users (name,email,password) VALUES (%s,%s,%s)''',
+                  (request.form['name'], request.form['email'], request.form['password']),
+                  commit=True)
             return redirect(url_for('login'))
-        except:
-            conn.close()
-            return render_template('register.html', error="Email already registered")
+        except psycopg2.errors.UniqueViolation:
+            return render_template('register.html', error='Email already registered')
+        except Exception:
+            return render_template('register.html', error='Registration failed')
     return render_template('register.html')
 
 
-# 🔑 LOGIN
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form.get('email')
-        pwd   = request.form.get('password')
-        conn  = get_db()
-        user  = conn.execute(
-            "SELECT * FROM users WHERE email=? AND password=?",
-            (email, pwd)
-        ).fetchone()
-        conn.close()
+        user = query('SELECT * FROM users WHERE email=%s AND password=%s',
+                     (request.form['email'], request.form['password']), fetchone=True)
         if user:
             session['user_name']  = user['name']
             session['user_email'] = user['email']
             return redirect(url_for('index'))
-        return render_template('login.html', error="Invalid email or password")
+        return render_template('login.html', error='Invalid email or password')
     return render_template('login.html')
 
 
-# 🚪 LOGOUT
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('login'))
 
 
-# 🔔 MARK NOTIFICATION READ
+# ═══════════════════════════════════════════
+# 🔔  NOTIFICATIONS
+# ═══════════════════════════════════════════
 @app.route('/notif/read/<int:id>')
 def mark_read(id):
-    conn = get_db()
-    conn.execute("UPDATE notifications SET is_read=1 WHERE id=?", (id,))
-    conn.commit()
-    conn.close()
+    query('UPDATE notifications SET is_read=1 WHERE id=%s', (id,), commit=True)
     return redirect(url_for('notifications'))
 
 
-# 🔔 NOTIFICATIONS PAGE
 @app.route('/notifications')
 def notifications():
     if 'user_email' not in session:
         return redirect(url_for('login'))
-    conn = get_db()
-    notifs = conn.execute(
-        "SELECT * FROM notifications WHERE user_email=? ORDER BY id DESC",
-        (session['user_email'],)
-    ).fetchall()
-    conn.close()
+    notifs = query('SELECT * FROM notifications WHERE user_email=%s ORDER BY id DESC',
+                   (session['user_email'],), fetchall=True) or []
     return render_template('notifications.html', notifs=notifs)
 
 
-# ✏️ EDIT PROFILE
+# ═══════════════════════════════════════════
+# ✏️  EDIT PROFILE  (Cloudinary upload)
+# ═══════════════════════════════════════════
 @app.route('/edit-profile', methods=['GET', 'POST'])
 def edit_profile():
     if 'user_email' not in session:
         return redirect(url_for('login'))
-
-    conn = get_db()
+    me = session['user_email']
 
     if request.method == 'POST':
-        name  = request.form.get('name')
-        phone = request.form.get('phone')
-        bio   = request.form.get('bio')
+        name      = request.form.get('name')
+        phone     = request.form.get('phone')
+        bio       = request.form.get('bio')
         photo_url = request.form.get('photo_url', '')
 
-        # Handle file upload
+        # Try Cloudinary upload first
         photo_data = ''
         file = request.files.get('photo_file')
         if file and file.filename:
-            import base64
-            photo_data = 'data:' + file.content_type + ';base64,' + base64.b64encode(file.read()).decode()
-        elif photo_url:
+            photo_data = upload_to_cloudinary(file, folder='tripzy/profiles')
+        if not photo_data and photo_url:
             photo_data = photo_url
 
-        conn.execute('''
-            UPDATE users SET name=?, phone=?, bio=?, photo=?
-            WHERE email=?
-        ''', (name, phone, bio, photo_data, session['user_email']))
-        conn.commit()
+        query('UPDATE users SET name=%s, phone=%s, bio=%s, photo=%s WHERE email=%s',
+              (name, phone, bio, photo_data, me), commit=True)
         session['user_name'] = name
-        conn.close()
         return redirect(url_for('profile'))
 
-    db_user = conn.execute(
-        "SELECT * FROM users WHERE email=?", (session['user_email'],)
-    ).fetchone()
+    db_user = query('SELECT * FROM users WHERE email=%s', (me,), fetchone=True)
     user = dict(db_user) if db_user else {}
-    conn.close()
     return render_template('edit_profile.html', user=user)
 
 
-# ⭐ SUBMIT REVIEW
+# ═══════════════════════════════════════════
+# ⭐  SUBMIT REVIEW
+# ═══════════════════════════════════════════
 @app.route('/review/<int:ride_id>', methods=['POST'])
 def submit_review(ride_id):
     if 'user_email' not in session:
         return redirect(url_for('login'))
 
-    stars       = request.form.get('stars')
-    review_text = request.form.get('review_text')
-    reviewee    = request.form.get('reviewee_email')
-    role        = request.form.get('reviewer_role')
+    me       = session['user_email']
+    stars    = request.form.get('stars')
+    text     = request.form.get('review_text')
+    reviewee = request.form.get('reviewee_email')
+    role     = request.form.get('reviewer_role')
+    now      = datetime.now().strftime('%d %b, %I:%M %p')
 
-    conn = get_db()
-    now  = datetime.now().strftime("%d %b, %I:%M %p")
-
-    # Check not already reviewed
-    existing = conn.execute(
-        "SELECT id FROM reviews WHERE ride_id=? AND reviewer_email=?",
-        (ride_id, session['user_email'])
-    ).fetchone()
-
+    existing = query('SELECT id FROM reviews WHERE ride_id=%s AND reviewer_email=%s',
+                     (ride_id, me), fetchone=True)
     if not existing:
-        conn.execute('''
-        INSERT INTO reviews (ride_id, reviewer_email, reviewee_email, reviewer_role, stars, review_text, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (ride_id, session['user_email'], reviewee, role, stars, review_text, now))
+        query('''INSERT INTO reviews
+                   (ride_id,reviewer_email,reviewee_email,reviewer_role,stars,review_text,created_at)
+                 VALUES (%s,%s,%s,%s,%s,%s,%s)''',
+              (ride_id, me, reviewee, role, stars, text, now), commit=True)
 
-        # Update reviewee avg rating
-        all_reviews = conn.execute(
-            "SELECT stars FROM reviews WHERE reviewee_email=?", (reviewee,)
-        ).fetchall()
-        avg = sum(int(r['stars']) for r in all_reviews) / len(all_reviews)
-        conn.execute(
-            "UPDATE users SET avg_rating=?, total_ratings=? WHERE email=?",
-            (round(avg, 1), len(all_reviews), reviewee)
-        )
-        conn.commit()
+        all_rev = query('SELECT stars FROM reviews WHERE reviewee_email=%s',
+                        (reviewee,), fetchall=True) or []
+        avg = sum(int(r['stars']) for r in all_rev) / len(all_rev)
+        query('UPDATE users SET avg_rating=%s, total_ratings=%s WHERE email=%s',
+              (round(avg, 1), len(all_rev), reviewee), commit=True)
 
-    conn.close()
     return redirect(url_for('ride_detail', id=ride_id))
 
 
-# 📜 LEGAL
+# ═══════════════════════════════════════════
+# 📜  LEGAL
+# ═══════════════════════════════════════════
 @app.route('/legal')
 def legal():
     return render_template('legal.html')
 
 
+# ═══════════════════════════════════════════
+# 🚀  ENTRYPOINT
+# ═══════════════════════════════════════════
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
