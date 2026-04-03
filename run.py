@@ -20,8 +20,8 @@ from flask import (Flask, render_template, request,
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── detect which backends are available ──────────────────────────────────────
-DATABASE_URL = os.environ.get('DATABASE_URL', '')
-MONGO_URL    = os.environ.get('MONGO_URL', '')
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://trripzy_user:pUUtklU986x0iZwa1jQRFM2hJjToIazb@dpg-d77joabuibrs73c1o1d0-a/trripzy')
+MONGO_URL    = os.environ.get('MONGO_URL', 'mongodb+srv://hghaste_db_user:WfuEgIOZL5hC6dno@cluster0.9n0k1zt.mongodb.net/tripzy?appName=Cluster0')
 USE_POSTGRES = bool(DATABASE_URL)
 USE_MONGO    = bool(MONGO_URL)
 
@@ -43,15 +43,15 @@ app.secret_key = os.environ.get('SECRET_KEY', 'tripzy_dev_secret_change_in_prod'
 # ☁️  CLOUDINARY
 # ═══════════════════════════════════════════════════════════════════════════════
 cloudinary.config(
-    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
-    api_key    =os.environ.get('CLOUDINARY_API_KEY',    ''),
-    api_secret =os.environ.get('CLOUDINARY_API_SECRET', ''),
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', 'dusl8hilm'),
+    api_key    =os.environ.get('CLOUDINARY_API_KEY',    '933863442389513'),
+    api_secret =os.environ.get('CLOUDINARY_API_SECRET', 'cFb8XFiwqyuSd_TcmwbhSd89st0'),
 )
 
 def upload_to_cloudinary(file_obj, folder='tripzy'):
     try:
         res = cloudinary.uploader.upload(file_obj, folder=folder, resource_type='auto')
-        return res.get('secure_url', '')
+        return res.get('secure_url', 'cloudinary://933863442389513:cFb8XFiwqyuSd_TcmwbhSd89st0@dusl8hilm')
     except Exception as e:
         app.logger.error(f'Cloudinary error: {e}')
         return ''
