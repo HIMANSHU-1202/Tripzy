@@ -20,8 +20,8 @@ from flask import (Flask, render_template, request,
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── detect which backends are available ──────────────────────────────────────
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://trripzy_user:pUUtklU986x0iZwa1jQRFM2hJjToIazb@dpg-d77joabuibrs73c1o1d0-a/trripzy')
-MONGO_URL    = os.environ.get('MONGO_URL', 'mongodb+srv://trripzy_user:WfuEgIOZL5hC6dno@cluster0.9n0k1zt.mongodb.net/tripzy?appName=Cluster0')
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+MONGO_URL    = os.environ.get('MONGO_URL', '')
 USE_POSTGRES = bool(DATABASE_URL)
 USE_MONGO    = bool(MONGO_URL)
 
@@ -43,15 +43,15 @@ app.secret_key = os.environ.get('SECRET_KEY', 'tripzy_dev_secret_change_in_prod'
 # ☁️  CLOUDINARY
 # ═══════════════════════════════════════════════════════════════════════════════
 cloudinary.config(
-    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', 'dusl8hilm'),
-    api_key    =os.environ.get('CLOUDINARY_API_KEY',    '933863442389513'),
-    api_secret =os.environ.get('CLOUDINARY_API_SECRET', 'cFb8XFiwqyuSd_TcmwbhSd89st0'),
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+    api_key    =os.environ.get('CLOUDINARY_API_KEY',    ''),
+    api_secret =os.environ.get('CLOUDINARY_API_SECRET', ''),
 )
 
 def upload_to_cloudinary(file_obj, folder='tripzy'):
     try:
         res = cloudinary.uploader.upload(file_obj, folder=folder, resource_type='auto')
-        return res.get('secure_url', 'cloudinary://933863442389513:cFb8XFiwqyuSd_TcmwbhSd89st0@dusl8hilm')
+        return res.get('secure_url', '')
     except Exception as e:
         app.logger.error(f'Cloudinary error: {e}')
         return ''
@@ -1161,156 +1161,6 @@ def not_found(e):
 def server_error(e):
     app.logger.error(f'500: {e}')
     return render_template('base.html'), 500
-
-@app.route('/db-status')
-def db_status():
-    # PostgreSQL check
-    pg_ok = False
-    try:
-        r = query('SELECT 1 AS ok', fetchone=True)
-        pg_ok = bool(r)
-    except Exception:
-        pass
-
-    # MongoDB check
-    mg_ok = False
-    mg_cols = []
-    mg_err = ''
-    if USE_MONGO:
-        try:
-            mdb = get_mongo()
-            mg_cols = mdb.list_collection_names()
-            mg_ok = True
-        except Exception as e:
-            mg_err = str(e)
-
-    # Cloudinary check
-    cl_name = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
-    cl_key  = bool(os.environ.get('CLOUDINARY_API_KEY', ''))
-
-    return jsonify(
-        postgresql=dict(
-            backend='postgresql' if USE_POSTGRES else 'sqlite',
-            postgres_url_set=USE_POSTGRES,
-            connected=pg_ok,
-        ),
-        mongodb=dict(
-            connected=mg_ok,
-            collections=mg_cols,
-            error=mg_err,
-        ),
-        cloudinary=dict(
-            configured=bool(cl_name and cl_key),
-            cloud_name=cl_name,
-            api_key_set=cl_key,
-        )
-    )
-
-@app.route('/test')
-def test_page():
-    return render_template('test_tripzy.html')
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 🔬  TEST / DIAGNOSTIC ROUTES
-#     Add these to run.py alongside your other routes.
-#     The HTML test page (test_tripzy.html) calls all of these.
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-@app.route('/db-status')
-def db_status():
-    """Full infrastructure status: PostgreSQL, MongoDB, Cloudinary."""
-
-    # ── PostgreSQL ────────────────────────────────────────────────
-    pg_ok  = False
-    pg_err = ''
-    try:
-        result = query('SELECT 1 AS ok', fetchone=True)
-        pg_ok  = bool(result)
-    except Exception as e:
-        pg_err = str(e)
-
-    pg_info = dict(
-        backend         = 'postgresql' if USE_POSTGRES else 'sqlite',
-        postgres_url_set= USE_POSTGRES,
-        connected       = pg_ok,
-        driver          = 'psycopg v3' if USE_POSTGRES else 'sqlite3',
-        error           = pg_err or None,
-    )
-
-    # ── MongoDB ───────────────────────────────────────────────────
-    mg_ok   = False
-    mg_cols = []
-    mg_db   = ''
-    mg_err  = ''
-    if USE_MONGO:
-        try:
-            mdb     = get_mongo()
-            mg_cols = mdb.list_collection_names()
-            mg_db   = mdb.name
-            mg_ok   = True
-        except Exception as e:
-            mg_err = str(e)
-    else:
-        mg_err = 'MONGO_URL not set'
-
-    mg_info = dict(
-        connected  = mg_ok,
-        collections= mg_cols,
-        db_name    = mg_db,
-        error      = mg_err or None,
-    )
-
-    # ── Cloudinary ────────────────────────────────────────────────
-    cl_name    = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
-    cl_key_set = bool(os.environ.get('CLOUDINARY_API_KEY', ''))
-    cl_sec_set = bool(os.environ.get('CLOUDINARY_API_SECRET', ''))
-    cl_ok      = bool(cl_name and cl_key_set and cl_sec_set)
-
-    cl_info = dict(
-        configured  = cl_ok,
-        cloud_name  = cl_name or None,
-        api_key_set = cl_key_set,
-        secret_set  = cl_sec_set,
-    )
-
-    return jsonify(
-        status      = 'ok',
-        postgresql  = pg_info,
-        mongodb     = mg_info,
-        cloudinary  = cl_info,
-    )
-
-
-@app.route('/db-test-read')
-def db_test_read():
-    """
-    Read back the most recently created ride for the logged-in user,
-    or a specific ride_id passed as ?ride_id=N.
-    Used by the write-cycle test in test_tripzy.html.
-    """
-    ride_id = request.args.get('ride_id')
-    me      = session.get('user_email', '')
-
-    if ride_id:
-        ride = query('SELECT id, seats, from_loc, to_loc FROM rides WHERE id=%s',
-                     (ride_id,), fetchone=True)
-    elif me:
-        ride = query('SELECT id, seats, from_loc, to_loc FROM rides WHERE user_email=%s ORDER BY id DESC LIMIT 1',
-                     (me,), fetchone=True)
-    else:
-        ride = None
-
-    if ride:
-        return jsonify(
-            status  = 'ok',
-            ride_id = ride['id'],
-            seats   = ride['seats'],
-            from_loc= ride['from_loc'],
-            to_loc  = ride['to_loc'],
-        )
-    return jsonify(status='not_found', error='No ride found'), 404
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
