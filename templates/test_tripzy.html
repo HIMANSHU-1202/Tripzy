@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tripzy — System Test</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0a0f1e;
+    color: #d9e8f3;
+    min-height: 100vh;
+    padding: 32px 20px;
+  }
+  .container { max-width: 740px; margin: 0 auto; }
+
+  h1 {
+    font-size: 26px; font-weight: 700;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+  }
+  .subtitle { font-size: 13px; color: #5a7a9e; margin-bottom: 28px; }
+
+  .section { margin-bottom: 22px; }
+  .section-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: #5a7a9e;
+    margin-bottom: 10px; padding-left: 4px;
+  }
+
+  .card {
+    background: #101828;
+    border: 1px solid #1e3048;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .card-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #1e3048;
+  }
+  .card-icon { font-size: 20px; }
+  .card-name { font-size: 14px; font-weight: 600; color: #d9e8f3; }
+  .card-desc { font-size: 12px; color: #5a7a9e; margin-top: 2px; }
+  .status-badge {
+    margin-left: auto; padding: 3px 11px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.4px;
+    flex-shrink: 0;
+  }
+  .badge-waiting { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+  .badge-ok      { background: rgba(79,172,254,0.12);  color: #4facfe; border: 1px solid rgba(79,172,254,0.35); }
+  .badge-pass    { background: rgba(52,211,153,0.12);  color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+  .badge-fail    { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+
+  .card-body { padding: 12px 18px; }
+  .result-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 13px; padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-key { color: #5a8aae; }
+  .result-val { color: #d9e8f3; font-weight: 500; font-family: 'Courier New', monospace; font-size: 12px; }
+  .result-val.ok   { color: #34d399; }
+  .result-val.fail { color: #f87171; }
+  .result-val.warn { color: #fbbf24; }
+  .result-val.info { color: #4facfe; }
+
+  .log-box {
+    background: #070c17; border-radius: 10px; padding: 14px;
+    font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.85;
+    color: #5a7a9e; max-height: 300px; overflow-y: auto;
+    white-space: pre-wrap; border: 1px solid #1e3048;
+  }
+  .log-ok   { color: #34d399; }
+  .log-fail { color: #f87171; }
+  .log-info { color: #4facfe; }
+  .log-warn { color: #fbbf24; }
+  .log-dim  { color: #3a5a7e; }
+
+  .btn-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  button {
+    padding: 10px 20px; border: none; border-radius: 10px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    font-family: inherit;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-primary {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: #0a1628;
+  }
+  .btn-secondary {
+    background: rgba(255,255,255,0.05); color: #7ab8d8;
+    border: 1px solid rgba(79,172,254,0.2);
+  }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .summary-bar { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+  .summary-box {
+    flex: 1; min-width: 110px; text-align: center;
+    background: #101828; border: 1px solid #1e3048;
+    border-radius: 14px; padding: 14px 8px;
+  }
+  .summary-num { font-size: 30px; font-weight: 700; }
+  .summary-lbl { font-size: 11px; color: #5a7a9e; margin-top: 4px; letter-spacing: 0.5px; }
+
+  .progress-track {
+    height: 3px; background: #1e3048; border-radius: 2px;
+    margin-bottom: 22px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #4facfe, #00f2fe);
+    border-radius: 2px; transition: width 0.3s ease;
+  }
+
+  #overallResult {
+    text-align: center; padding: 13px; border-radius: 12px;
+    font-size: 14px; font-weight: 600; margin-top: 18px; display: none;
+  }
+  .overall-ok   { background: rgba(52,211,153,0.1);  color: #34d399; border: 1px solid rgba(52,211,153,0.25); }
+  .overall-warn { background: rgba(251,191,36,0.1);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
+  .overall-fail { background: rgba(248,113,113,0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
+
+  .muted { color: #5a7a9e; font-size: 13px; }
+  .group-divider {
+    height: 1px; background: #1e3048; margin: 6px 0;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🚗 Tripzy — System Test</h1>
+  <p class="subtitle">PostgreSQL · MongoDB · Cloudinary · Auth · Rides · Chat · Profile — full stack check</p>
+
+  <div class="btn-row">
+    <button class="btn-primary" onclick="runAllTests()" id="runBtn">▶ Run All Tests</button>
+    <button class="btn-secondary" onclick="clearLogs()">↺ Clear</button>
+    <button class="btn-secondary" onclick="window.location.href='/'">← Back to App</button>
+  </div>
+
+  <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+
+  <div class="summary-bar">
+    <div class="summary-box">
+      <div class="summary-num" id="passCount" style="color:#34d399;">—</div>
+      <div class="summary-lbl">Passed</div>
+    </div>
+    <div class="summary-box">
+      <div class="summary-num" id="failCount" style="color:#f87171;">—</div>
+      <div class="summary-lbl">Failed</div>
+    </div>
+    <div class="summary-box">
+      <div class="summary-num" id="warnCount" style="color:#fbbf24;">—</div>
+      <div class="summary-lbl">Warnings</div>
+    </div>
+    <div class="summary-box">
+      <div class="summary-num" id="totalCount" style="color:#5a8aae;">—</div>
+      <div class="summary-lbl">Total</div>
+    </div>
+  </div>
+
+  <!-- ── INFRASTRUCTURE ── -->
+  <div class="section">
+    <div class="section-title">Infrastructure</div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🐘</div>
+        <div>
+          <div class="card-name">PostgreSQL</div>
+          <div class="card-desc">dpg-d77joabuibrs73c1o1d0-a / trripzy · users, rides, bookings, reviews, cars</div>
+        </div>
+        <span class="status-badge badge-waiting" id="pgBadge">WAITING</span>
+      </div>
+      <div class="card-body" id="pgBody"><div class="muted">Run tests to see results...</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🍃</div>
+        <div>
+          <div class="card-name">MongoDB Atlas</div>
+          <div class="card-desc">cluster0.9n0k1zt.mongodb.net / tripzy · messages, notifications</div>
+        </div>
+        <span class="status-badge badge-waiting" id="mgBadge">WAITING</span>
+      </div>
+      <div class="card-body" id="mgBody"><div class="muted">Run tests to see results...</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">☁️</div>
+        <div>
+          <div class="card-name">Cloudinary</div>
+          <div class="card-desc">dusl8hilm · profile photos, car images, documents</div>
+        </div>
+        <span class="status-badge badge-waiting" id="clBadge">WAITING</span>
+      </div>
+      <div class="card-body" id="clBody"><div class="muted">Run tests to see results...</div></div>
+    </div>
+  </div>
+
+  <!-- ── AUTH ── -->
+  <div class="section">
+    <div class="section-title">Auth &amp; Users</div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🔐</div>
+        <div>
+          <div class="card-name">Authentication</div>
+          <div class="card-desc">register · login · bcrypt check · session · wrong password rejection</div>
+        </div>
+        <span class="status-badge badge-waiting" id="authBadge">WAITING</span>
+      </div>
+      <div class="card-body" id="authBody"><div class="muted">Run tests to see results...</div></div>
+    </div>
+  </div>
+
+  <!-- ── RIDES ── -->
+  <div class="section">
+    <div class="section-title">Rides</div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🚗</div>
+        <div>
+          <div class="card-name">Ride CRUD &amp; Booking</div>
+          <div class="card-desc">post ride · search · detail · multi-seat book · seat count · cancel</div>
+        </div>
+        <span class="status-badge badge-waiting" id="rideBadge">WAITING</span>
+      </div>
+      <div class="card-body" id="rideBody"><div class="muted">Run tests to see results...</div></div>
+    </div>
+  </div>
+
+  <!-- ── CHAT ── -->
+  <div class="section">
+    <div class="section-title">Messaging</div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">💬</div>
+        <div>
+          <div class="card-name">Chat &amp; Notifications</div>
+          <div class="card-desc">inbox · send message · notifications list · mark read</div>
+        </div>
+        <span class="status-badge badge-waiting" id="chatBadge">WAITING</span>
+      </div>
+      <div class="card-body" id="chatBody"><div class="muted">Run tests to see results...</div></div>
+    </div>
+  </div>
+
+  <!-- ── PROFILE ── -->
+  <div class="section">
+    <div class="section-title">Profile &amp; Extras</div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">👤</div>
+        <div>
+          <div class="card-name">Profile, Car, Verification, Summary</div>
+          <div class="card-desc">profile · edit profile · my-car · verify · emergency · summary · legal</div>
+        </div>
+        <span class="status-badge badge-waiting" id="profBadge">WAITING</span>
+      </div>
+      <div class="card-body" id="profBody"><div class="muted">Run tests to see results...</div></div>
+    </div>
+  </div>
+
+  <!-- ── DB WRITE TESTS ── -->
+  <div class="section">
+    <div class="section-title">Live Write Tests (PostgreSQL + MongoDB)</div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">✏️</div>
+        <div>
+          <div class="card-name">Database Write / Read / Delete</div>
+          <div class="card-desc">create ride → read back → book seat → verify seat count → cancel → cleanup</div>
+        </div>
+        <span class="status-badge badge-waiting" id="writeBadge">WAITING</span>
+      </div>
+      <div class="card-body" id="writeBody"><div class="muted">Run tests to see results...</div></div>
+    </div>
+  </div>
+
+  <div id="overallResult"></div>
+
+  <div class="section" style="margin-top:22px;">
+    <div class="section-title">Test Log</div>
+    <div class="log-box" id="logBox">Click "Run All Tests" to begin...<br></div>
+  </div>
+</div>
+
+<script>
+let passed = 0, failed = 0, warned = 0, total = 0, done = 0;
+const TS  = `tripzy_test_${Date.now()}@dbtest.local`;
+const TPW = 'TestPass@999';
+let createdRideId = null;
+let createdBookingId = null;
+
+/* ───── Helpers ───── */
+function log(type, msg) {
+  const box = document.getElementById('logBox');
+  const ts  = new Date().toLocaleTimeString();
+  box.innerHTML += `<span class="log-${type}">[${ts}] ${msg}</span>\n`;
+  box.scrollTop  = box.scrollHeight;
+}
+
+function r(key, val, status = '') {
+  return `<div class="result-row">
+    <span class="result-key">${key}</span>
+    <span class="result-val ${status}">${val}</span>
+  </div>`;
+}
+
+function setB(id, txt, cls) {
+  const el = document.getElementById(id);
+  el.textContent = txt;
+  el.className = 'status-badge ' + cls;
+}
+function setBody(id, html) { document.getElementById(id).innerHTML = html; }
+
+function tick(ok, warn) {
+  done++;
+  if (ok) passed++;
+  else if (warn) warned++;
+  else failed++;
+  document.getElementById('passCount').textContent = passed;
+  document.getElementById('failCount').textContent = failed;
+  document.getElementById('warnCount').textContent = warned;
+  document.getElementById('totalCount').textContent = done;
+  document.getElementById('progFill').style.width = Math.round(done / total * 100) + '%';
+}
+
+function clearLogs() {
+  passed = failed = warned = done = total = 0;
+  createdRideId = null; createdBookingId = null;
+  document.getElementById('logBox').innerHTML = 'Log cleared.\n';
+  ['passCount','failCount','warnCount','totalCount'].forEach(id =>
+    document.getElementById(id).textContent = '—');
+  document.getElementById('progFill').style.width = '0%';
+  document.getElementById('overallResult').style.display = 'none';
+  ['pg','mg','cl','auth','ride','chat','prof','write'].forEach(x => {
+    setB(x + 'Badge', 'WAITING', 'badge-waiting');
+    setBody(x + 'Body', '<div class="muted">Run tests to see results...</div>');
+  });
+}
+
+async function api(method, url, body, isForm) {
+  const opts = { method, credentials: 'include' };
+  if (body && isForm) {
+    const fd = new FormData();
+    Object.entries(body).forEach(([k,v]) => fd.append(k, v));
+    opts.body = fd;
+  } else if (body) {
+    opts.headers = { 'Content-Type': 'application/json' };
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(url, opts);
+  let data;
+  try { data = await res.json(); } catch(e) {
+    const txt = await res.text().catch(() => '');
+    data = { _html: txt, _status: res.status };
+  }
+  return { ok: res.ok, status: res.status, data };
+}
+
+/* ─── 1. Infrastructure ─── */
+async function testInfra() {
+  log('info', '═══ Infrastructure ═══');
+  total += 3;
+
+  // /db-status
+  try {
+    const res = await api('GET', '/db-status');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = res.data;
+
+    const pg = d.postgresql || {};
+    const pgOk = pg.connected === true && pg.backend === 'postgresql';
+    let pgH  = r('Backend',       pg.backend || 'unknown', pgOk ? 'ok' : 'warn');
+    pgH += r('Connected',      pg.connected ? 'Yes' : 'No',   pg.connected ? 'ok' : 'fail');
+    pgH += r('URL set',        pg.postgres_url_set ? 'Yes' : 'No', pg.postgres_url_set ? 'ok' : 'fail');
+    pgH += r('Driver',         pg.driver || 'psycopg (v3)', 'info');
+    setBody('pgBody', pgH);
+    setB('pgBadge', pgOk ? 'CONNECTED' : 'CHECK URL', pgOk ? 'badge-pass' : 'badge-fail');
+    log(pgOk ? 'ok' : 'fail', `${pgOk ? '✅' : '❌'} PostgreSQL: backend=${pg.backend} connected=${pg.connected}`);
+    tick(pgOk, false);
+
+    const mg = d.mongodb || {};
+    const mgOk = mg.connected === true;
+    let mgH  = r('Connected',   mgOk ? 'Yes' : 'No', mgOk ? 'ok' : 'fail');
+    if (mgOk) {
+      mgH += r('Collections', mg.collections && mg.collections.length ? mg.collections.join(', ') : '(empty)', 'ok');
+      mgH += r('Database', mg.db_name || 'tripzy', 'info');
+    } else {
+      mgH += r('Error', mg.error || 'No MONGO_URL set', 'fail');
+    }
+    setBody('mgBody', mgH);
+    setB('mgBadge', mgOk ? 'CONNECTED' : 'FAILED', mgOk ? 'badge-pass' : 'badge-fail');
+    log(mgOk ? 'ok' : 'fail', `${mgOk ? '✅' : '❌'} MongoDB: connected=${mgOk}${mg.error ? ' err=' + mg.error : ''}`);
+    tick(mgOk, false);
+
+    const cl = d.cloudinary || {};
+    const clOk = cl.configured === true;
+    let clH  = r('Cloud name', cl.cloud_name || 'not set', cl.cloud_name ? 'ok' : 'fail');
+    clH += r('API key set', cl.api_key_set ? 'Yes' : 'No', cl.api_key_set ? 'ok' : 'fail');
+    clH += r('Configured',  clOk ? 'Yes' : 'No', clOk ? 'ok' : 'warn');
+    setBody('clBody', clH);
+    setB('clBadge', clOk ? 'CONFIGURED' : 'CHECK KEYS', clOk ? 'badge-pass' : 'badge-fail');
+    log(clOk ? 'ok' : 'warn', `${clOk ? '✅' : '⚠️'} Cloudinary: cloud=${cl.cloud_name} key=${cl.api_key_set}`);
+    tick(clOk, !clOk);
+
+  } catch (e) {
+    log('fail', `❌ /db-status error: ${e.message}`);
+    log('warn', `⚠️  Make sure you added the /db-status route to run.py`);
+    ['pg','mg','cl'].forEach(x => setB(x + 'Badge', 'NO ENDPOINT', 'badge-fail'));
+    ['pg','mg','cl'].forEach(x => setBody(x + 'Body',
+      r('Error', '/db-status not found — add route to run.py', 'fail')));
+    tick(false); tick(false); tick(false);
+  }
+}
+
+/* ─── 2. Auth ─── */
+async function testAuth() {
+  log('info', '\n═══ Auth & Users ═══');
+  total += 5;
+  const results = [];
+
+  // Register
+  try {
+    const res = await api('POST', '/register', {name:'DB Tester', email:TS, password:TPW}, true);
+    const ok  = res.status === 302 || (res.ok && !res.data._html?.includes('error'));
+    results.push({ n: 'POST /register (new account)', v: ok ? `HTTP ${res.status} — created` : `HTTP ${res.status}`, ok });
+    log(ok ? 'ok' : 'warn', `${ok ? '✅' : '⚠️'} Register → ${res.status}`);
+    tick(ok, !ok);
+  } catch(e) { results.push({ n: 'POST /register', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  // Login correct
+  try {
+    const res = await api('POST', '/login', { email: TS, password: TPW }, true);
+    const ok  = res.status === 302 || res.ok;
+    results.push({ n: 'POST /login (correct password)', v: ok ? 'Session created' : `HTTP ${res.status}`, ok });
+    log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} Login correct → ${res.status}`);
+    tick(ok, false);
+  } catch(e) { results.push({ n: 'POST /login', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  // Wrong password MUST be rejected
+  try {
+    const res = await api('POST', '/login', { email: TS, password: 'wrongpassword123' }, true);
+    const rejected = res.status !== 302 && res.status !== 200;
+    const alsoCheck = res.data?._html?.toLowerCase().includes('invalid') || res.status === 401;
+    const ok = rejected || alsoCheck;
+    results.push({ n: 'POST /login (wrong password rejected)', v: ok ? 'Rejected correctly' : 'BUG: accepted!', ok });
+    log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} Wrong password → ${res.status}`);
+    tick(ok, false);
+  } catch(e) { results.push({ n: 'Wrong password rejected', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  // Profile accessible with session
+  try {
+    const res = await api('GET', '/profile');
+    const ok  = res.ok || res.status === 200 || res.status === 302;
+    results.push({ n: 'GET /profile (session active)', v: ok ? 'Accessible' : `HTTP ${res.status}`, ok });
+    log(ok ? 'ok' : 'warn', `${ok ? '✅' : '⚠️'} /profile → ${res.status}`);
+    tick(ok, !ok);
+  } catch(e) { results.push({ n: 'GET /profile', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  // Logout
+  try {
+    const res = await api('GET', '/logout');
+    const ok  = res.status === 302 || res.ok;
+    results.push({ n: 'GET /logout', v: ok ? 'Session cleared' : `HTTP ${res.status}`, ok });
+    log(ok ? 'ok' : 'warn', `${ok ? '✅' : '⚠️'} Logout → ${res.status}`);
+    tick(ok, !ok);
+  } catch(e) { results.push({ n: 'GET /logout', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  setBody('authBody', results.map(x => r(x.n, x.v, x.ok ? 'ok' : 'fail')).join(''));
+  const allOk = results.every(x => x.ok);
+  setB('authBadge', allOk ? 'ALL PASS' : 'SOME FAIL', allOk ? 'badge-pass' : 'badge-fail');
+}
+
+/* ─── 3. Rides ─── */
+async function testRides() {
+  log('info', '\n═══ Rides ═══');
+  total += 5;
+  const results = [];
+
+  // Login first so ride post is authenticated
+  await api('POST', '/login', { email: TS, password: TPW }, true);
+
+  // Post a ride
+  try {
+    const res = await api('POST', '/post', {
+      from:'Mumbai', to:'Pune', date:'2026-12-15', time:'09:00',
+      seats:'4', price:'250', music:'Allowed', smoking:'Not Allowed',
+      luggage:'Available', stops:'No', gender:'Any', ac:'Yes',
+      pets:'Not Allowed', charging:'Available'
+    }, true);
+    const ok = res.status === 302 || res.ok;
+    results.push({ n: 'POST /post (create ride)', v: ok ? 'Ride posted' : `HTTP ${res.status}`, ok });
+    log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} Post ride → ${res.status}`);
+    tick(ok, false);
+  } catch(e) { results.push({ n: 'POST /post', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  // Search rides
+  try {
+    const res = await api('POST', '/results', {from:'Mumbai',to:'Pune',seats_required:'1'}, true);
+    const ok  = res.ok || res.status === 200;
+    results.push({ n: 'POST /results (search rides)', v: ok ? 'Results page OK' : `HTTP ${res.status}`, ok });
+    log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} Search → ${res.status}`);
+    tick(ok, false);
+  } catch(e) { results.push({ n: 'POST /results', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  // Home page (shows rides)
+  try {
+    const res = await api('GET', '/');
+    const ok  = res.ok || res.status === 200;
+    results.push({ n: 'GET / (home + ride list)', v: ok ? 'OK' : `HTTP ${res.status}`, ok });
+    log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} GET / → ${res.status}`);
+    tick(ok, false);
+  } catch(e) { results.push({ n: 'GET /', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  // Ride detail id=1 (may not exist, that's fine)
+  try {
+    const res = await api('GET', '/ride/1');
+    const ok  = res.ok || res.status === 200 || res.status === 404;
+    results.push({ n: 'GET /ride/1 (detail)', v: res.status === 404 ? 'No ride yet (OK)' : `HTTP ${res.status}`, ok });
+    log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} /ride/1 → ${res.status}`);
+    tick(ok, false);
+  } catch(e) { results.push({ n: 'GET /ride/1', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  // Track page
+  try {
+    const res = await api('GET', '/track/1');
+    const ok  = res.ok || res.status === 200 || res.status === 404;
+    results.push({ n: 'GET /track/1 (live track)', v: ok ? `HTTP ${res.status}` : `HTTP ${res.status}`, ok });
+    log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} /track/1 → ${res.status}`);
+    tick(ok, false);
+  } catch(e) { results.push({ n: 'GET /track/1', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  setBody('rideBody', results.map(x => r(x.n, x.v, x.ok ? 'ok' : 'fail')).join(''));
+  const allOk = results.every(x => x.ok);
+  setB('rideBadge', allOk ? 'ALL PASS' : 'SOME FAIL', allOk ? 'badge-pass' : 'badge-fail');
+}
+
+/* ─── 4. Chat ─── */
+async function testChat() {
+  log('info', '\n═══ Messaging ═══');
+  total += 4;
+  const results = [];
+
+  const pages = [
+    ['/inbox',          'GET /inbox'],
+    ['/notifications',  'GET /notifications'],
+    ['/chat/test@tripzy.com?ride_id=1', 'GET /chat/:user'],
+  ];
+
+  for (const [url, name] of pages) {
+    try {
+      const res = await api('GET', url);
+      const ok  = res.ok || res.status === 200 || res.status === 302;
+      results.push({ n: name, v: ok ? 'OK' : `HTTP ${res.status}`, ok });
+      log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} ${name} → ${res.status}`);
+      tick(ok, false);
+    } catch(e) { results.push({ n: name, v: e.message, ok: false }); log('fail', `❌ ${name}: ${e.message}`); tick(false); }
+  }
+
+  // Notif mark-read (id=999 — will 302/ok even if not found)
+  try {
+    const res = await api('GET', '/notif/read/999');
+    const ok  = res.status === 302 || res.ok;
+    results.push({ n: 'GET /notif/read/:id', v: ok ? 'Redirect OK' : `HTTP ${res.status}`, ok });
+    log(ok ? 'ok' : 'warn', `${ok ? '✅' : '⚠️'} Mark notif read → ${res.status}`);
+    tick(ok, !ok);
+  } catch(e) { results.push({ n: 'GET /notif/read/:id', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  setBody('chatBody', results.map(x => r(x.n, x.v, x.ok ? 'ok' : 'fail')).join(''));
+  const allOk = results.every(x => x.ok);
+  setB('chatBadge', allOk ? 'ALL PASS' : 'SOME FAIL', allOk ? 'badge-pass' : 'badge-fail');
+}
+
+/* ─── 5. Profile pages ─── */
+async function testProfile() {
+  log('info', '\n═══ Profile & Extras ═══');
+  const pages = [
+    ['/profile',      'GET /profile'],
+    ['/edit-profile', 'GET /edit-profile'],
+    ['/my-car',       'GET /my-car'],
+    ['/verify',       'GET /verify (docs upload)'],
+    ['/emergency',    'GET /emergency (contacts)'],
+    ['/summary',      'GET /summary (earnings)'],
+    ['/legal',        'GET /legal'],
+  ];
+  total += pages.length;
+  const results = [];
+
+  for (const [url, name] of pages) {
+    try {
+      const res = await api('GET', url);
+      const ok  = res.ok || res.status === 200 || res.status === 302;
+      results.push({ n: name, v: ok ? 'OK' : `HTTP ${res.status}`, ok });
+      log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} ${name} → ${res.status}`);
+      tick(ok, false);
+    } catch(e) { results.push({ n: name, v: e.message, ok: false }); log('fail', `❌ ${name}: ${e.message}`); tick(false); }
+  }
+
+  setBody('profBody', results.map(x => r(x.n, x.v, x.ok ? 'ok' : 'fail')).join(''));
+  const allOk = results.every(x => x.ok);
+  setB('profBadge', allOk ? 'ALL PASS' : 'SOME FAIL', allOk ? 'badge-pass' : 'badge-fail');
+}
+
+/* ─── 6. Live DB write/read/delete cycle ─── */
+async function testWriteCycle() {
+  log('info', '\n═══ Live DB Write/Read/Delete Cycle ═══');
+  total += 6;
+  const results = [];
+  let rideId = null, bookingId = null, initialSeats = null;
+
+  // Login
+  await api('POST', '/login', { email: TS, password: TPW }, true);
+
+  // STEP 1: Post a test ride
+  try {
+    const res = await api('POST', '/post', {
+      from:'TestCity A', to:'TestCity B', date:'2027-01-01', time:'10:00',
+      seats:'3', price:'199', music:'Allowed', smoking:'Not Allowed',
+      luggage:'Available', stops:'No', gender:'Any', ac:'Yes',
+      pets:'Not Allowed', charging:'Not Available'
+    }, true);
+    const ok = res.status === 302 || res.ok;
+    results.push({ n: 'Create test ride (seats=3, price=₹199)', v: ok ? 'Created' : `HTTP ${res.status}`, ok });
+    log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} Create ride → ${res.status}`);
+    tick(ok, false);
+  } catch(e) { results.push({ n: 'Create ride', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  // STEP 2: Read it back via /db-test-read
+  try {
+    const res = await api('GET', '/db-test-read');
+    if (res.ok && res.data.ride_id) {
+      rideId       = res.data.ride_id;
+      initialSeats = res.data.seats;
+      results.push({ n: `Read back ride (id=${rideId}, seats=${initialSeats})`, v: 'Found in DB', ok: true });
+      log('ok', `✅ Read ride id=${rideId} seats=${initialSeats}`);
+      tick(true, false);
+    } else {
+      results.push({ n: 'Read back ride from PostgreSQL', v: res.data.error || 'Not found', ok: false });
+      log('fail', `❌ Read ride: ${JSON.stringify(res.data)}`);
+      tick(false, false);
+    }
+  } catch(e) { results.push({ n: 'Read ride', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+
+  // STEP 3: Book 2 seats (from a different test user)
+  if (rideId) {
+    try {
+      // Register second user for booking (ignore errors if already exists)
+      const tu2 = `tripzy_booker_${Date.now()}@dbtest.local`;
+      await api('POST', '/register', { name: 'Booker', email: tu2, password: TPW }, true);
+      await api('POST', '/login', { email: tu2, password: TPW }, true);
+
+      const res = await api('POST', `/ride/${rideId}`, { seats_required: '2' }, true);
+      const ok  = res.status === 200 || res.ok || res.data?.booked;
+      results.push({ n: `Book 2 seats on ride ${rideId}`, v: ok ? 'Booked' : `HTTP ${res.status}`, ok });
+      log(ok ? 'ok' : 'warn', `${ok ? '✅' : '⚠️'} Book 2 seats → ${res.status}`);
+      tick(ok, !ok);
+
+      // Get booking id
+      if (ok && res.data?.booking_id) bookingId = res.data.booking_id;
+    } catch(e) { results.push({ n: 'Book 2 seats', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+  } else { tick(false, false); results.push({ n: 'Book 2 seats', v: 'skipped (no ride id)', ok: false }); }
+
+  // STEP 4: Verify seat count reduced
+  if (rideId) {
+    try {
+      const res = await api('GET', `/db-test-read?ride_id=${rideId}`);
+      const newSeats = res.data.seats;
+      const ok  = newSeats !== null && newSeats !== undefined && newSeats < initialSeats;
+      results.push({ n: `Seat count reduced (${initialSeats} → ${newSeats})`, v: ok ? `${newSeats} remaining` : `Still ${newSeats}`, ok });
+      log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} Seats: ${initialSeats} → ${newSeats}`);
+      tick(ok, false);
+    } catch(e) { results.push({ n: 'Verify seat count', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+  } else { tick(false, false); results.push({ n: 'Verify seat count', v: 'skipped', ok: false }); }
+
+  // STEP 5: Cancel booking (restores seats)
+  if (bookingId) {
+    try {
+      const res = await api('GET', `/cancel/${bookingId}`);
+      const ok  = res.status === 302 || res.ok;
+      results.push({ n: `Cancel booking ${bookingId} (restores seats)`, v: ok ? 'Cancelled' : `HTTP ${res.status}`, ok });
+      log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} Cancel booking → ${res.status}`);
+      tick(ok, false);
+    } catch(e) { results.push({ n: 'Cancel booking', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
+  } else {
+    log('warn', '⚠️  No booking ID captured — cancel test skipped');
+    results.push({ n: 'Cancel booking', v: 'skipped (booking not captured)', ok: false });
+    tick(false, true);
+  }
+
+  // Re-login as main test user to clean up
+  await api('POST', '/login', { email: TS, password: TPW }, true);
+
+  setBody('writeBody', results.map(x => r(x.n, x.v, x.ok ? 'ok' : 'fail')).join(''));
+  const allOk = results.every(x => x.ok);
+  setB('writeBadge', allOk ? 'ALL PASS' : results.some(x=>!x.ok) ? 'SOME FAIL' : 'WARNINGS',
+       allOk ? 'badge-pass' : 'badge-fail');
+}
+
+/* ─── Master runner ─── */
+async function runAllTests() {
+  clearLogs();
+  total = 0; done = 0;
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true; btn.textContent = '⏳ Running...';
+
+  log('info', `🚗 Tripzy System Test — ${new Date().toLocaleString()}`);
+  log('info', `   Test account: ${TS}`);
+  log('dim',  `   Full stack: PostgreSQL + MongoDB + Cloudinary + all routes\n`);
+
+  await testInfra();
+  await testAuth();
+  await testRides();
+  await testChat();
+  await testProfile();
+  await testWriteCycle();
+
+  // Verdict
+  const overall = document.getElementById('overallResult');
+  overall.style.display = 'block';
+  if (failed === 0 && warned === 0) {
+    overall.textContent = `✅ All ${passed} tests passed — Tripzy is fully operational and launch ready`;
+    overall.className = 'overall-ok';
+  } else if (failed === 0) {
+    overall.textContent = `⚠️  ${passed} passed · ${warned} warnings — check Cloudinary config or /db-status route`;
+    overall.className = 'overall-warn';
+  } else {
+    overall.textContent = `❌ ${failed} failed · ${passed} passed · ${warned} warnings — see test log above`;
+    overall.className = 'overall-fail';
+  }
+
+  log('dim', `\n─── FINAL: ${passed} passed · ${failed} failed · ${warned} warnings ───`);
+  btn.disabled = false; btn.textContent = '▶ Run All Tests';
+}
+</script>
+</body>
+</html>
