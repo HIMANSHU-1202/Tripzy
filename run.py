@@ -1162,6 +1162,50 @@ def server_error(e):
     app.logger.error(f'500: {e}')
     return render_template('base.html'), 500
 
+@app.route('/db-status')
+def db_status():
+    # PostgreSQL check
+    pg_ok = False
+    try:
+        r = query('SELECT 1 AS ok', fetchone=True)
+        pg_ok = bool(r)
+    except Exception:
+        pass
+
+    # MongoDB check
+    mg_ok = False
+    mg_cols = []
+    mg_err = ''
+    if USE_MONGO:
+        try:
+            mdb = get_mongo()
+            mg_cols = mdb.list_collection_names()
+            mg_ok = True
+        except Exception as e:
+            mg_err = str(e)
+
+    # Cloudinary check
+    cl_name = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
+    cl_key  = bool(os.environ.get('CLOUDINARY_API_KEY', ''))
+
+    return jsonify(
+        postgresql=dict(
+            backend='postgresql' if USE_POSTGRES else 'sqlite',
+            postgres_url_set=USE_POSTGRES,
+            connected=pg_ok,
+        ),
+        mongodb=dict(
+            connected=mg_ok,
+            collections=mg_cols,
+            error=mg_err,
+        ),
+        cloudinary=dict(
+            configured=bool(cl_name and cl_key),
+            cloud_name=cl_name,
+            api_key_set=cl_key,
+        )
+    )
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🚀  ENTRYPOINT
