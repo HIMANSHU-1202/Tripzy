@@ -1136,3 +1136,36 @@ def legal():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
+
+from flask import jsonify
+import os
+from sqlalchemy import text
+from app import app, db
+
+@app.route('/health')
+def health():
+    postgres_ok = False
+    mongo_ok = False
+
+    # Check PostgreSQL
+    try:
+        db.session.execute(text('SELECT 1'))
+        postgres_ok = True
+    except Exception as e:
+        print("Postgres error:", e)
+
+    # Check MongoDB
+    try:
+        from pymongo import MongoClient
+        client = MongoClient(os.environ.get("MONGO_URL"))
+        client.admin.command('ping')
+        mongo_ok = True
+    except Exception as e:
+        print("Mongo error:", e)
+
+    return jsonify({
+        "status": "ok",
+        "postgres": postgres_ok,
+        "mongo": mongo_ok
+    })
