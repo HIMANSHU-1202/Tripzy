@@ -1265,7 +1265,9 @@ def db_test_read():
         )
     return jsonify(status='not_found', error='No ride found'), 404
 
-
+@app.route('/test')
+def test_page():
+    return render_template('test_tripzy.html')
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🚀  ENTRYPOINT
