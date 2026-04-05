@@ -1,64 +1,38 @@
 """
-Tripzy — Production-ready backend
-===================================
-• PostgreSQL  → structured data  (users, rides, bookings, reviews, cars, verification)
-• MongoDB     → fast collections  (messages, notifications, chat threads)
-• SQLite      → local dev fallback (no env vars needed on your laptop)
-• bcrypt      → secure password hashing
-• psycopg v3  → Python 3.14 compatible PostgreSQL driver
-• Cloudinary  → all file uploads
+Tripzy — PostgreSQL-first backend (Phase 1)
+============================================
+• PostgreSQL  → all data (users, rides, bookings, messages,
+                notifications, reviews, cars, verification)
+• SQLite      → automatic local dev fallback (no setup needed)
+• bcrypt      → secure password hashing via werkzeug
+• Python 3.11 → stable, fully supported on Render
+
+Phase 2 (later): add MongoDB for messages/notifications
+Phase 3 (later): add Cloudinary for file uploads
 """
 
 import os
 import sqlite3
 from datetime import datetime, timedelta
 
-import cloudinary
-import cloudinary.uploader
 from flask import (Flask, render_template, request,
                    redirect, url_for, session, jsonify)
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# ── detect which backends are available ──────────────────────────────────────
-DATABASE_URL = os.environ.get('DATABASE_URL', '')
-MONGO_URL    = os.environ.get('MONGO_URL', '')
-USE_POSTGRES = bool(DATABASE_URL)
-USE_MONGO    = bool(MONGO_URL)
-
-# psycopg v3 — works on Python 3.14, unlike psycopg2-binary
-if USE_POSTGRES:
-    import psycopg                          # psycopg v3
-    from psycopg.rows import dict_row
-    from psycopg_pool import ConnectionPool
-
-if USE_MONGO:
-    from pymongo import MongoClient, DESCENDING
-    from bson import ObjectId
-
 # ─────────────────────────────────────────────────────────────────────────────
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+USE_POSTGRES = bool(DATABASE_URL)
+
+if USE_POSTGRES:
+    import psycopg2
+    import psycopg2.extras
+    import psycopg2.pool
+
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'tripzy_dev_secret_change_in_prod')
+app.secret_key = os.environ.get('SECRET_KEY', 'tripzy_dev_secret_change_me')
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ☁️  CLOUDINARY
-# ═══════════════════════════════════════════════════════════════════════════════
-cloudinary.config(
-    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
-    api_key    =os.environ.get('CLOUDINARY_API_KEY',    ''),
-    api_secret =os.environ.get('CLOUDINARY_API_SECRET', ''),
-)
-
-def upload_to_cloudinary(file_obj, folder='tripzy'):
-    try:
-        res = cloudinary.uploader.upload(file_obj, folder=folder, resource_type='auto')
-        return res.get('secure_url', '')
-    except Exception as e:
-        app.logger.error(f'Cloudinary error: {e}')
-        return ''
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 🗄️  POSTGRESQL  — psycopg v3 connection pool
+# 🗄️  POSTGRESQL — connection pool  /  SQLite fallback
 # ═══════════════════════════════════════════════════════════════════════════════
 _pg_pool = None
 
@@ -66,64 +40,18 @@ def _get_pg_pool():
     global _pg_pool
     if _pg_pool is None:
         url = DATABASE_URL
-        # psycopg v3 uses postgresql:// (same as psycopg2)
         if url.startswith('postgres://'):
             url = url.replace('postgres://', 'postgresql://', 1)
-        _pg_pool = ConnectionPool(
-            conninfo=url,
-            min_size=1,
-            max_size=10,
-            kwargs={'row_factory': dict_row},  # all rows return as dicts automatically
-            open=True,
-        )
+        _pg_pool = psycopg2.pool.SimpleConnectionPool(1, 10, url)
     return _pg_pool
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 🍃  MONGODB  — lazy singleton with graceful fallback on auth error
-# ═══════════════════════════════════════════════════════════════════════════════
-_mongo_client = None
-_mongo_db     = None
-_mongo_ok     = None   # None=untested  True=working  False=failed permanently
-
-def get_mongo():
-    global _mongo_client, _mongo_db, _mongo_ok
-    if _mongo_db is None:
-        _mongo_client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
-        _mongo_client.admin.command("ping")   # force real auth check
-        _mongo_db = _mongo_client.get_default_database()
-        _mongo_ok = True
-    return _mongo_db
-
-
-def mongo_available():
-    """Returns True only when MONGO_URL is set AND connection actually works."""
-    global _mongo_ok
-    if not USE_MONGO:
-        return False
-    if _mongo_ok is True:
-        return True
-    if _mongo_ok is False:
-        return False
-    # first call — try to connect
-    try:
-        get_mongo()
-        return True
-    except Exception as e:
-        app.logger.error(f"MongoDB unavailable: {e}")
-        _mongo_ok = False
-        return False
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 🔧  UNIFIED QUERY HELPER  (SQLite ↔ PostgreSQL)
-# ═══════════════════════════════════════════════════════════════════════════════
-
 class _Row(dict):
-    """Dict that also supports attribute access  (makes templates happy)."""
+    """Dict with attribute access so templates can use dot notation."""
     def __getattr__(self, key):
         try:    return self[key]
         except KeyError: raise AttributeError(key)
+
 
 def _sqlite_rows(cur):
     cols = [d[0] for d in cur.description] if cur.description else []
@@ -132,35 +60,40 @@ def _sqlite_rows(cur):
 
 def query(sql, params=(), fetchone=False, fetchall=False, commit=False):
     """
-    Unified query against PostgreSQL (production) or SQLite (local dev).
-    Always returns plain _Row dicts.
-    commit=True on an INSERT returns the new row's id.
+    Run a query against PostgreSQL (Render) or SQLite (local).
+    Returns dicts always. On commit=True + INSERT → returns new row id.
     """
     if USE_POSTGRES:
         pool = _get_pg_pool()
-        with pool.connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, params or None)
-                result = None
-                if fetchone:   result = cur.fetchone()   # already a dict via dict_row
-                elif fetchall: result = cur.fetchall()
-                if commit:
-                    conn.commit()
-                    try:
-                        cur.execute('SELECT lastval()')
-                        result = cur.fetchone()['lastval']
-                    except Exception:
-                        result = None
-                return result
+        conn = pool.getconn()
+        try:
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(sql, params or None)
+            result = None
+            if fetchone:   result = cur.fetchone()
+            elif fetchall: result = cur.fetchall()
+            if commit:
+                conn.commit()
+                try:
+                    cur.execute('SELECT lastval()')
+                    result = cur.fetchone()['lastval']
+                except Exception:
+                    result = None
+            cur.close()
+            return result
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            pool.putconn(conn)
     else:
-        # SQLite — translate PostgreSQL syntax on the fly
         sqlite_sql = (sql
                       .replace('%s', '?')
-                      .replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT')
+                      .replace('SERIAL PRIMARY KEY',       'INTEGER PRIMARY KEY AUTOINCREMENT')
                       .replace('ON CONFLICT (key) DO NOTHING', 'OR IGNORE'))
         conn = sqlite3.connect('tripzy.db')
         conn.row_factory = sqlite3.Row
-        cur  = conn.cursor()
+        cur = conn.cursor()
         try:
             cur.execute(sqlite_sql, params or ())
         except sqlite3.OperationalError as e:
@@ -169,13 +102,11 @@ def query(sql, params=(), fetchone=False, fetchall=False, commit=False):
             raise
         result = None
         if fetchone:
-            rows = _sqlite_rows(cur)
-            result = rows[0] if rows else None
+            rows = _sqlite_rows(cur); result = rows[0] if rows else None
         elif fetchall:
             result = _sqlite_rows(cur)
         if commit:
-            conn.commit()
-            result = cur.lastrowid
+            conn.commit(); result = cur.lastrowid
         cur.close(); conn.close()
         return result
 
@@ -183,11 +114,8 @@ def query(sql, params=(), fetchone=False, fetchall=False, commit=False):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🧱  INIT DATABASE
 # ═══════════════════════════════════════════════════════════════════════════════
-def _pk():
-    return 'SERIAL PRIMARY KEY' if USE_POSTGRES else 'INTEGER PRIMARY KEY AUTOINCREMENT'
-
 def init_db():
-    pk = _pk()
+    pk = 'SERIAL PRIMARY KEY' if USE_POSTGRES else 'INTEGER PRIMARY KEY AUTOINCREMENT'
 
     tables = [
         f'''CREATE TABLE IF NOT EXISTS users (
@@ -229,6 +157,24 @@ def init_db():
             seats_booked INTEGER DEFAULT 1,
             booked_at    TEXT,
             rating       TEXT
+        )''',
+
+        f'''CREATE TABLE IF NOT EXISTS messages (
+            id        {pk},
+            sender    TEXT,
+            receiver  TEXT,
+            message   TEXT,
+            time      TEXT,
+            ride_id   INTEGER,
+            is_read   INTEGER DEFAULT 0
+        )''',
+
+        f'''CREATE TABLE IF NOT EXISTS notifications (
+            id         {pk},
+            user_email TEXT,
+            message    TEXT,
+            is_read    INTEGER DEFAULT 0,
+            created_at TEXT
         )''',
 
         f'''CREATE TABLE IF NOT EXISTS emergency_contacts (
@@ -276,91 +222,55 @@ def init_db():
         )''',
     ]
 
-    # Only keep messages + notifications in SQL when Mongo is unavailable
-    if not USE_MONGO:
-        tables += [
-            f'''CREATE TABLE IF NOT EXISTS messages (
-                id        {pk},
-                sender    TEXT,
-                receiver  TEXT,
-                message   TEXT,
-                time      TEXT,
-                ride_id   INTEGER,
-                is_read   INTEGER DEFAULT 0
-            )''',
-            f'''CREATE TABLE IF NOT EXISTS notifications (
-                id         {pk},
-                user_email TEXT,
-                message    TEXT,
-                is_read    INTEGER DEFAULT 0,
-                created_at TEXT
-            )''',
-        ]
-
     if USE_POSTGRES:
-        # DDL must run with autocommit in psycopg v3
+        # DDL needs autocommit in psycopg2 for CREATE TABLE
         url = DATABASE_URL
         if url.startswith('postgres://'):
             url = url.replace('postgres://', 'postgresql://', 1)
-        with psycopg.connect(url, autocommit=True) as conn:
-            for ddl in tables:
-                conn.execute(ddl)
-            conn.execute(
-                "INSERT INTO config(key,value) VALUES('commission_pct','10') "
-                "ON CONFLICT(key) DO NOTHING"
-            )
+        conn = psycopg2.connect(url)
+        conn.autocommit = True
+        cur = conn.cursor()
+        for ddl in tables:
+            cur.execute(ddl)
+        cur.execute("INSERT INTO config(key,value) VALUES('commission_pct','10') "
+                    "ON CONFLICT(key) DO NOTHING")
+        # Safe column migrations
+        alters = [
+            'ALTER TABLE users    ADD COLUMN IF NOT EXISTS password_hash TEXT',
+            'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS seats_booked  INTEGER DEFAULT 1',
+            'ALTER TABLE bookings ADD COLUMN IF NOT EXISTS user_email    TEXT',
+            'ALTER TABLE rides    ADD COLUMN IF NOT EXISTS user_email    TEXT',
+            'ALTER TABLE messages ADD COLUMN IF NOT EXISTS ride_id       INTEGER',
+            'ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read       INTEGER DEFAULT 0',
+        ]
+        for alt in alters:
+            try: cur.execute(alt)
+            except Exception: pass
+        cur.close(); conn.close()
     else:
         for ddl in tables:
             query(ddl, commit=True)
         query("INSERT OR IGNORE INTO config(key,value) VALUES('commission_pct','10')", commit=True)
-
-    # Default commission
-    if USE_POSTGRES:
-        query("INSERT INTO config(key,value) VALUES('commission_pct','10') ON CONFLICT(key) DO NOTHING", commit=True)
-    else:
-        query("INSERT OR IGNORE INTO config(key,value) VALUES('commission_pct','10')", commit=True)
-
-    # Safe migrations — ADD COLUMN IF NOT EXISTS is PostgreSQL only
-    alters = [
-        ('users',    'password_hash', 'TEXT'),
-        ('bookings', 'seats_booked',  'INTEGER DEFAULT 1'),
-        ('bookings', 'user_email',    'TEXT'),
-        ('rides',    'user_email',    'TEXT'),
-    ]
-    for tbl, col, typ in alters:
-        if USE_POSTGRES:
-            # psycopg v3: run DDL with autocommit to avoid "can't run in transaction" errors
-            try:
-                url = DATABASE_URL
-                if url.startswith('postgres://'):
-                    url = url.replace('postgres://', 'postgresql://', 1)
-                with psycopg.connect(url, autocommit=True) as conn:
-                    conn.execute(f'ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col} {typ}')
-            except Exception:
-                pass
-        else:
+        alters = [
+            ('users',    'password_hash', 'TEXT'),
+            ('bookings', 'seats_booked',  'INTEGER DEFAULT 1'),
+            ('bookings', 'user_email',    'TEXT'),
+            ('rides',    'user_email',    'TEXT'),
+            ('messages', 'ride_id',       'INTEGER'),
+            ('messages', 'is_read',       'INTEGER DEFAULT 0'),
+        ]
+        for tbl, col, typ in alters:
             try: query(f'ALTER TABLE {tbl} ADD COLUMN {col} {typ}', commit=True)
             except Exception: pass
 
-    # MongoDB indexes
-    if USE_MONGO:
-        try:
-            mdb = get_mongo()
-            mdb.messages.create_index([('sender', 1), ('receiver', 1)])
-            mdb.messages.create_index([('ride_id', 1)])
-            mdb.messages.create_index([('receiver', 1), ('is_read', 1)])
-            mdb.notifications.create_index([('user_email', 1), ('is_read', 1)])
-        except Exception as e:
-            app.logger.warning(f'MongoDB index creation: {e}')
-
-    app.logger.info(f'DB init done  postgres={USE_POSTGRES}  mongo={USE_MONGO}')
+    app.logger.info(f'DB init complete  postgres={USE_POSTGRES}')
 
 
 init_db()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🔔  CONTEXT PROCESSOR
+# 🔔  CONTEXT PROCESSOR — badge counts
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.context_processor
 def inject_counts():
@@ -368,16 +278,27 @@ def inject_counts():
         return dict(notif_count=0, unread_msgs=0)
     me = session['user_email']
     try:
-        if mongo_available():
-            mdb          = get_mongo()
-            notif_count  = mdb.notifications.count_documents({'user_email': me, 'is_read': 0})
-            unread_msgs  = mdb.messages.count_documents({'receiver': me, 'is_read': 0})
-        else:
-            notif_count  = (query('SELECT COUNT(*) AS c FROM notifications WHERE user_email=%s AND is_read=0', (me,), fetchone=True) or {}).get('c', 0)
-            unread_msgs  = (query('SELECT COUNT(*) AS c FROM messages WHERE receiver=%s AND is_read=0', (me,), fetchone=True) or {}).get('c', 0)
+        notif_count = (query(
+            'SELECT COUNT(*) AS c FROM notifications WHERE user_email=%s AND is_read=0',
+            (me,), fetchone=True) or {}).get('c', 0)
+        unread_msgs = (query(
+            'SELECT COUNT(*) AS c FROM messages WHERE receiver=%s AND is_read=0',
+            (me,), fetchone=True) or {}).get('c', 0)
         return dict(notif_count=notif_count, unread_msgs=unread_msgs)
     except Exception:
         return dict(notif_count=0, unread_msgs=0)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔔  NOTIFICATION HELPER
+# ═══════════════════════════════════════════════════════════════════════════════
+def send_notification(user_email, message):
+    now = datetime.now().strftime('%d %b, %I:%M %p')
+    try:
+        query('INSERT INTO notifications(user_email,message,is_read,created_at) VALUES(%s,%s,0,%s)',
+              (user_email, message, now), commit=True)
+    except Exception as e:
+        app.logger.error(f'send_notification error: {e}')
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -392,14 +313,14 @@ def get_smart_status(ride):
     except Exception:
         return manual
     now = datetime.now()
-    if now < ride_dt:                         return 'not_started'
-    elif now < ride_dt + timedelta(hours=3):  return 'started'
-    else:                                      return 'completed'
+    if now < ride_dt:                        return 'not_started'
+    elif now < ride_dt + timedelta(hours=3): return 'started'
+    else:                                    return 'completed'
 
 
 def enrich_rides(rides):
-    enriched = []
     now = datetime.now()
+    enriched = []
     for ride in rides:
         r = dict(ride)
         r['smart_status'] = get_smart_status(ride)
@@ -408,8 +329,8 @@ def enrich_rides(rides):
             diff      = ride_dt - now
             total_min = int(diff.total_seconds() // 60)
             if total_min > 0:
-                hrs, mins    = divmod(total_min, 60)
-                days, hrs    = divmod(hrs, 24)
+                hrs, mins = divmod(total_min, 60)
+                days, hrs = divmod(hrs, 24)
                 if days:      r['countdown'] = f"Starts in {days}d {hrs}h"
                 elif hrs:     r['countdown'] = f"Starts in {hrs}h {mins}m"
                 else:         r['countdown'] = f"Starts in {mins} min"
@@ -427,26 +348,9 @@ def is_bookable(ride, requested=1):
     s = get_smart_status(ride)
     if s == 'completed': return False, 'This ride has already completed'
     if s == 'started':   return False, 'This ride has already started'
-    if ride['seats'] <= 0:            return False, 'No seats available'
-    if ride['seats'] < requested:     return False, f'Only {ride["seats"]} seat(s) left'
+    if ride['seats'] <= 0:        return False, 'No seats available'
+    if ride['seats'] < requested: return False, f'Only {ride["seats"]} seat(s) left'
     return True, ''
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 📨  NOTIFICATION HELPERS  (Mongo or SQL)
-# ═══════════════════════════════════════════════════════════════════════════════
-def send_notification(user_email, message):
-    now = datetime.now().strftime('%d %b, %I:%M %p')
-    if mongo_available():
-        get_mongo().notifications.insert_one({
-            'user_email': user_email,
-            'message':    message,
-            'is_read':    0,
-            'created_at': now,
-        })
-    else:
-        query('INSERT INTO notifications(user_email,message,is_read,created_at) VALUES(%s,%s,0,%s)',
-              (user_email, message, now), commit=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -467,6 +371,8 @@ def index():
                               WHERE b.user_email=%s''', (me,), fetchall=True) or []
         up_o = [r for r in enrich_rides(my_offered) if r['smart_status'] in ('not_started','started')]
         up_j = [r for r in enrich_rides(my_joined)  if r['smart_status'] in ('not_started','started')]
+        for r in up_j: r['role'] = 'passenger'
+        for r in up_o: r['role'] = 'driver'
         my_upcoming = sorted(up_o + up_j, key=lambda x: (x.get('date',''), x.get('time','')))
 
     return render_template('index.html', rides=available, my_upcoming_rides=my_upcoming)
@@ -485,8 +391,8 @@ def post_ride():
                     music,smoking,luggage,stops,gender,ac,pets,charging,status)
                  VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'not_started')''',
               (session['user_email'],
-               request.form['from'], request.form['to'],
-               request.form['date'], request.form['time'],
+               request.form['from'],       request.form['to'],
+               request.form['date'],       request.form['time'],
                int(request.form['seats']), int(request.form['price']),
                request.form.get('music'),   request.form.get('smoking'),
                request.form.get('luggage'), request.form.get('stops'),
@@ -511,26 +417,19 @@ def results():
         return render_template('results.html', rides=[])
 
     def norm(s): return s.lower().replace(' ', '') if s else ''
-    f  = norm(request.form.get('from', ''))
-    t  = norm(request.form.get('to',   ''))
+    f               = norm(request.form.get('from', ''))
+    t               = norm(request.form.get('to',   ''))
     requested_seats = max(1, int(request.form.get('seats_required', 1) or 1))
-
     prefs = {k: request.form.get(k) for k in
              ('ac','gender','smoking','music','luggage','stops','pets','charging')}
     sort  = request.form.get('sort')
 
     all_rides = query('SELECT * FROM rides', fetchall=True) or []
-    matched   = []
-    for ride in all_rides:
-        rf, rt = norm(ride['from_loc']), norm(ride['to_loc'])
-        if f in rf and t in rt:
-            matched.append(ride)
-
-    enriched = enrich_rides(matched)
-    filtered = [r for r in enriched
-                if r['smart_status'] in ('not_started','started')
-                and r['seats'] >= requested_seats]
-
+    matched   = [r for r in all_rides if f in norm(r['from_loc']) and t in norm(r['to_loc'])]
+    enriched  = enrich_rides(matched)
+    filtered  = [r for r in enriched
+                 if r['smart_status'] in ('not_started','started')
+                 and r['seats'] >= requested_seats]
     for r in filtered:
         r['is_full'] = (r['seats'] == 0)
 
@@ -552,8 +451,11 @@ def ride_detail(id):
     if request.method == 'POST':
         me = session.get('user_email', '')
         if ride and ride.get('user_email') == me:
-            rd = dict(ride); rd['smart_status'] = get_smart_status(ride); rd['countdown'] = ''
-            return render_template('ride_detail.html', ride=rd, error='You cannot book your own ride',
+            rd = dict(ride)
+            rd['smart_status'] = get_smart_status(ride)
+            rd['countdown'] = ''
+            return render_template('ride_detail.html', ride=rd,
+                                   error='You cannot book your own ride',
                                    driver=None, driver_reviews=[], can_review=False)
 
         requested = max(1, int(request.form.get('seats_required', 1) or 1))
@@ -562,18 +464,17 @@ def ride_detail(id):
         if ride and can_book:
             query('UPDATE rides SET seats=seats-%s WHERE id=%s', (requested, id), commit=True)
             booked_at  = datetime.now().strftime('%d %b, %I:%M %p')
-            booking_id = query('''INSERT INTO bookings(ride_id,user_email,seats_booked,booked_at)
-                                  VALUES(%s,%s,%s,%s)''',
-                               (id, me, requested, booked_at), commit=True)
+            booking_id = query(
+                'INSERT INTO bookings(ride_id,user_email,seats_booked,booked_at) VALUES(%s,%s,%s,%s)',
+                (id, me, requested, booked_at), commit=True)
 
             send_notification(me,
                 f"🎟 Booking confirmed! {ride['from_loc']} → {ride['to_loc']} "
                 f"on {ride['date']}. {requested} seat(s). ID: #TRP{booking_id}")
-
             owner = ride.get('user_email', '')
             if owner and owner != me:
                 send_notification(owner,
-                    f"🎉 {session.get('user_name','Someone')} booked {requested} seat(s) on your ride: "
+                    f"🎉 {session.get('user_name','Someone')} booked {requested} seat(s): "
                     f"{ride['from_loc']} → {ride['to_loc']}")
 
             ride = query('SELECT * FROM rides WHERE id=%s', (id,), fetchone=True)
@@ -588,7 +489,7 @@ def ride_detail(id):
                                    driver=None, driver_reviews=[], driver_car=None,
                                    can_review=False, can_book=False)
 
-    # GET ──────────────────────────────────────────────────────────────────────
+    # ── GET ──────────────────────────────────────────────────────────────────
     driver = driver_car = None
     driver_reviews = []
     can_review     = False
@@ -608,15 +509,16 @@ def ride_detail(id):
                        (id, me_email), fetchone=True)
             can_review = not ex
 
-    is_owner = ride and ride.get('user_email') == me_email
-    already_booked = seats_by_me = 0
+    is_owner       = bool(ride and ride.get('user_email') == me_email)
+    already_booked = False
+    seats_by_me    = 0
     if ride and me_email:
         bk = query('SELECT id,seats_booked FROM bookings WHERE ride_id=%s AND user_email=%s',
                    (id, me_email), fetchone=True)
         already_booked = bool(bk)
         seats_by_me    = bk['seats_booked'] if bk else 0
 
-    ride_e = dict(ride) if ride else None
+    ride_e   = dict(ride) if ride else None
     can_book = False
     if ride_e:
         ride_e['smart_status'] = get_smart_status(ride)
@@ -700,7 +602,7 @@ def profile():
     me = session['user_email']
 
     all_offered = query('SELECT * FROM rides WHERE user_email=%s', (me,), fetchall=True) or []
-    all_joined  = query('''SELECT b.id AS booking_id,b.seats_booked,b.rating,b.booked_at,r.*
+    all_joined  = query('''SELECT b.id AS booking_id, b.seats_booked, b.rating, b.booked_at, r.*
                            FROM bookings b JOIN rides r ON b.ride_id=r.id
                            WHERE b.user_email=%s''', (me,), fetchall=True) or []
 
@@ -714,8 +616,10 @@ def profile():
     completed_offered = [r for r in oe if r['smart_status'] == 'completed']
     completed_joined  = [r for r in je if r['smart_status'] == 'completed']
 
-    contacts = query('SELECT * FROM emergency_contacts WHERE user_email=%s LIMIT 1', (me,), fetchone=True)
-    verify   = query('SELECT * FROM verification WHERE user_email=%s LIMIT 1', (me,), fetchone=True)
+    contacts = query('SELECT * FROM emergency_contacts WHERE user_email=%s LIMIT 1',
+                     (me,), fetchone=True)
+    verify   = query('SELECT * FROM verification WHERE user_email=%s LIMIT 1',
+                     (me,), fetchone=True)
     car      = query('SELECT * FROM cars WHERE user_email=%s LIMIT 1', (me,), fetchone=True)
     db_user  = query('SELECT * FROM users WHERE email=%s', (me,), fetchone=True)
     reviews_received = query('SELECT * FROM reviews WHERE reviewee_email=%s ORDER BY id DESC',
@@ -723,7 +627,7 @@ def profile():
 
     u = dict(db_user) if db_user else {}
     user = {
-        'name':          u.get('name',          session.get('user_name','Guest')),
+        'name':          u.get('name',          session.get('user_name', 'Guest')),
         'email':         u.get('email',         me),
         'phone':         u.get('phone',         ''),
         'bio':           u.get('bio',           ''),
@@ -739,7 +643,7 @@ def profile():
                            active_offered=active_offered,   active_joined=active_joined,
                            upcoming_offered=upcoming_offered, upcoming_joined=upcoming_joined,
                            completed_offered=completed_offered, completed_joined=completed_joined,
-                           upcoming=upcoming_offered+upcoming_joined,
+                           upcoming=upcoming_offered + upcoming_joined,
                            contacts=contacts, verify=verify, car=car,
                            reviews_received=reviews_received)
 
@@ -758,7 +662,7 @@ def cancel_booking(id):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 💬  INBOX  (Mongo preferred, SQL fallback)
+# 💬  INBOX
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.route('/inbox')
 def inbox():
@@ -766,81 +670,58 @@ def inbox():
         return redirect(url_for('login'))
     me = session['user_email']
 
-    if mongo_available():
-        mdb = get_mongo()
-        # Latest message per (other_email, ride_id) conversation
-        pipeline = [
-            {'$match': {'$or': [{'sender': me}, {'receiver': me}]}},
-            {'$sort': {'_id': -1}},
-            {'$group': {
-                '_id': {
-                    'other':   {'$cond': [{'$eq': ['$sender', me]}, '$receiver', '$sender']},
-                    'ride_id': '$ride_id'
-                },
-                'last_msg': {'$first': '$message'},
-                'last_time': {'$first': '$time'},
-                'unread':    {'$sum': {'$cond': [
-                    {'$and': [{'$eq': ['$receiver', me]}, {'$eq': ['$is_read', 0]}]}, 1, 0
-                ]}},
-            }},
-            {'$sort': {'last_time': -1}},
-        ]
-        raw = list(mdb.messages.aggregate(pipeline))
-
-        chats = []
-        for row in raw:
-            other       = row['_id']['other']
-            ride_id     = row['_id'].get('ride_id')
-            other_user  = query('SELECT name FROM users WHERE email=%s', (other,), fetchone=True)
-            display_name = other_user['name'] if other_user else other.split('@')[0]
-            ride_info   = None
-            if ride_id:
-                ride_info = query('SELECT from_loc,to_loc FROM rides WHERE id=%s', (ride_id,), fetchone=True)
-            chats.append({
-                'user': other, 'display_name': display_name,
-                'message': row['last_msg'], 'time': row['last_time'],
-                'ride_id': ride_id, 'ride_info': ride_info,
-                'unread':  row['unread'],
-            })
-    else:
+    if USE_POSTGRES:
         raw = query('''
-            SELECT CASE WHEN sender=%s THEN receiver ELSE sender END AS other_email,
-                   ride_id, message, time, MAX(id) AS last_id,
-                   SUM(CASE WHEN receiver=%s AND is_read=0 THEN 1 ELSE 0 END) AS unread
+            SELECT DISTINCT ON (other_email, ride_id)
+                   CASE WHEN sender=%s THEN receiver ELSE sender END AS other_email,
+                   ride_id, message, time,
+                   SUM(CASE WHEN receiver=%s AND is_read=0 THEN 1 ELSE 0 END)
+                       OVER (PARTITION BY
+                           CASE WHEN sender=%s THEN receiver ELSE sender END, ride_id)
+                       AS unread
             FROM messages
             WHERE sender=%s OR receiver=%s
+            ORDER BY other_email, ride_id, id DESC
+        ''', (me,me,me,me,me), fetchall=True) or []
+    else:
+        raw = query('''
+            SELECT CASE WHEN sender=? THEN receiver ELSE sender END AS other_email,
+                   ride_id, message, time, MAX(id) AS last_id,
+                   SUM(CASE WHEN receiver=? AND is_read=0 THEN 1 ELSE 0 END) AS unread
+            FROM messages
+            WHERE sender=? OR receiver=?
             GROUP BY other_email, ride_id ORDER BY last_id DESC
-        ''', (me,me,me,me), fetchall=True) or []
+        '''.replace('?', '%s'), (me,me,me,me), fetchall=True) or []
 
-        chats = []
-        for row in raw:
-            other      = row['other_email']
-            other_user = query('SELECT name FROM users WHERE email=%s', (other,), fetchone=True)
-            display_name = other_user['name'] if other_user else other.split('@')[0]
-            ride_info  = None
-            if row['ride_id']:
-                ride_info = query('SELECT from_loc,to_loc FROM rides WHERE id=%s',
-                                  (row['ride_id'],), fetchone=True)
-            chats.append({
-                'user': other, 'display_name': display_name,
-                'message': row['message'], 'time': row['time'],
-                'ride_id': row['ride_id'], 'ride_info': ride_info,
-                'unread':  row['unread'] or 0,
-            })
+    chats = []
+    for row in (raw or []):
+        other      = row['other_email']
+        other_user = query('SELECT name FROM users WHERE email=%s', (other,), fetchone=True)
+        display_name = other_user['name'] if other_user else other.split('@')[0]
+        ride_info  = None
+        if row.get('ride_id'):
+            ride_info = query('SELECT from_loc,to_loc FROM rides WHERE id=%s',
+                              (row['ride_id'],), fetchone=True)
+        chats.append({
+            'user': other, 'display_name': display_name,
+            'message': row['message'], 'time': row['time'],
+            'ride_id': row.get('ride_id'), 'ride_info': ride_info,
+            'unread':  int(row.get('unread') or 0),
+        })
 
     total_unread = sum(c['unread'] for c in chats)
     return render_template('inbox.html', chats=chats, me=me, total_unread=total_unread)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 💬  CHAT  (Mongo preferred, SQL fallback)
+# 💬  CHAT
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.route('/chat/<user>', methods=['GET', 'POST'])
 def chat(user):
     if 'user_email' not in session:
         return redirect(url_for('login'))
-    me  = session['user_email']
-    rid = request.args.get('ride_id') or request.form.get('ride_id')
+    me      = session['user_email']
+    rid     = request.args.get('ride_id') or request.form.get('ride_id')
     rid_int = int(rid) if rid and str(rid).isdigit() else None
 
     ride_context = None
@@ -853,54 +734,32 @@ def chat(user):
     if request.method == 'POST' and not chat_blocked:
         msg_text = request.form.get('message', '').strip()
         if msg_text and user != me:
-            now_time = datetime.now().strftime('%H:%M')
-            now_full = datetime.now().strftime('%d %b, %I:%M %p')
+            now_time   = datetime.now().strftime('%H:%M')
+            now_full   = datetime.now().strftime('%d %b, %I:%M %p')
             ride_label = (f" on ride {ride_context['from_loc']} → {ride_context['to_loc']}"
                           if ride_context else '')
-            if mongo_available():
-                get_mongo().messages.insert_one({
-                    'sender': me, 'receiver': user,
-                    'message': msg_text, 'time': now_time,
-                    'ride_id': rid_int, 'is_read': 0,
-                    'created_at': now_full,
-                })
-            else:
-                query('INSERT INTO messages(sender,receiver,message,time,ride_id,is_read) VALUES(%s,%s,%s,%s,%s,0)',
-                      (me, user, msg_text, now_time, rid_int), commit=True)
+            query('INSERT INTO messages(sender,receiver,message,time,ride_id,is_read) '
+                  'VALUES(%s,%s,%s,%s,%s,0)',
+                  (me, user, msg_text, now_time, rid_int), commit=True)
             send_notification(user,
                 f"💬 {session.get('user_name', me.split('@')[0])}: {msg_text[:40]}{ride_label}")
         return redirect(url_for('chat', user=user, ride_id=rid or ''))
 
     # Mark as read
-    if mongo_available():
-        get_mongo().messages.update_many(
-            {'receiver': me, 'sender': user, 'ride_id': rid_int, 'is_read': 0},
-            {'$set': {'is_read': 1}}
-        )
-        if rid_int:
-            msgs_cur = get_mongo().messages.find(
-                {'$or': [{'sender': me,'receiver': user},{'sender': user,'receiver': me}],
-                 'ride_id': rid_int}
-            ).sort('_id', 1)
-        else:
-            msgs_cur = get_mongo().messages.find(
-                {'$or': [{'sender': me,'receiver': user},{'sender': user,'receiver': me}],
-                 'ride_id': None}
-            ).sort('_id', 1)
-        messages = [_Row({**m, 'id': str(m['_id'])}) for m in msgs_cur]
+    query('UPDATE messages SET is_read=1 WHERE receiver=%s AND sender=%s AND '
+          '(ride_id=%s OR (ride_id IS NULL AND %s IS NULL))',
+          (me, user, rid_int, rid_int), commit=True)
+
+    if rid_int:
+        messages = query('''SELECT * FROM messages
+                            WHERE ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s))
+                            AND ride_id=%s ORDER BY id''',
+                         (me,user,user,me,rid_int), fetchall=True) or []
     else:
-        query('UPDATE messages SET is_read=1 WHERE receiver=%s AND sender=%s AND ride_id=%s',
-              (me, user, rid_int), commit=True)
-        if rid_int:
-            messages = query('''SELECT * FROM messages
-                                WHERE ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s))
-                                AND ride_id=%s ORDER BY id''',
-                             (me,user,user,me,rid_int), fetchall=True) or []
-        else:
-            messages = query('''SELECT * FROM messages
-                                WHERE ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s))
-                                AND (ride_id IS NULL OR ride_id=0) ORDER BY id''',
-                             (me,user,user,me), fetchall=True) or []
+        messages = query('''SELECT * FROM messages
+                            WHERE ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s))
+                            AND (ride_id IS NULL OR ride_id=0) ORDER BY id''',
+                         (me,user,user,me), fetchall=True) or []
 
     other_user   = query('SELECT * FROM users WHERE email=%s', (user,), fetchone=True)
     display_name = other_user['name'] if other_user else (user.split('@')[0] if '@' in user else user)
@@ -920,32 +779,36 @@ def emergency():
     me = session.get('user_email', '')
     if request.method == 'POST':
         query('DELETE FROM emergency_contacts WHERE user_email=%s', (me,), commit=True)
-        query('INSERT INTO emergency_contacts(user_email,name1,phone1,name2,phone2) VALUES(%s,%s,%s,%s,%s)',
+        query('INSERT INTO emergency_contacts(user_email,name1,phone1,name2,phone2) '
+              'VALUES(%s,%s,%s,%s,%s)',
               (me, request.form.get('name1'), request.form.get('phone1'),
                request.form.get('name2'), request.form.get('phone2')), commit=True)
         return redirect(url_for('profile'))
-    contacts = query('SELECT * FROM emergency_contacts WHERE user_email=%s LIMIT 1', (me,), fetchone=True)
+    contacts = query('SELECT * FROM emergency_contacts WHERE user_email=%s LIMIT 1',
+                     (me,), fetchone=True)
     return render_template('emergency.html', contacts=contacts)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ✅  DRIVER VERIFICATION
+# ✅  DRIVER VERIFICATION  (file upload → store filename only for now)
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.route('/verify', methods=['GET', 'POST'])
 def verify():
     me = session.get('user_email', '')
     if request.method == 'POST':
-        def upl(field):
+        def doc_status(field):
             f = request.files.get(field)
             if f and f.filename:
-                url = upload_to_cloudinary(f, folder='tripzy/docs')
-                return 'uploaded' if url else 'pending'
-            existing = query('SELECT * FROM verification WHERE user_email=%s LIMIT 1', (me,), fetchone=True)
+                return 'uploaded'
+            existing = query('SELECT * FROM verification WHERE user_email=%s LIMIT 1',
+                             (me,), fetchone=True)
             return (existing[field] if existing else 'pending') or 'pending'
 
         query('DELETE FROM verification WHERE user_email=%s', (me,), commit=True)
-        query('INSERT INTO verification(user_email,aadhar,license,rc,insurance) VALUES(%s,%s,%s,%s,%s)',
-              (me, upl('aadhar'), upl('license'), upl('rc'), upl('insurance')), commit=True)
+        query('INSERT INTO verification(user_email,aadhar,license,rc,insurance) '
+              'VALUES(%s,%s,%s,%s,%s)',
+              (me, doc_status('aadhar'), doc_status('license'),
+               doc_status('rc'), doc_status('insurance')), commit=True)
         return redirect(url_for('profile'))
     vd = query('SELECT * FROM verification WHERE user_email=%s LIMIT 1', (me,), fetchone=True)
     return render_template('verify.html', verify=vd)
@@ -961,20 +824,17 @@ def track(id):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🚗  MY CAR
+# 🚗  MY CAR  (store base64 from browser for now — Cloudinary added in Phase 3)
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.route('/my-car', methods=['GET', 'POST'])
 def my_car():
     me = session.get('user_email', '')
     if request.method == 'POST':
-        files = request.files.getlist('images')
-        urls  = [upload_to_cloudinary(f, 'tripzy/cars') for f in files[:5] if f and f.filename]
-        urls  = [u for u in urls if u]
-        if not urls:
-            raw = request.form.get('images_data', '')
-            urls = [u for u in raw.split('||') if u]
+        images_data = request.form.get('images_data', '')
+        urls = [u for u in images_data.split('||') if u]
         query('DELETE FROM cars WHERE user_email=%s', (me,), commit=True)
-        query('INSERT INTO cars(user_email,name,model,color,plate,images) VALUES(%s,%s,%s,%s,%s,%s)',
+        query('INSERT INTO cars(user_email,name,model,color,plate,images) '
+              'VALUES(%s,%s,%s,%s,%s,%s)',
               (me, request.form.get('name'), request.form.get('model'),
                request.form.get('color'), (request.form.get('plate') or '').upper(),
                '||'.join(urls)), commit=True)
@@ -984,7 +844,7 @@ def my_car():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🔐  REGISTER  — bcrypt hashed passwords
+# 🔐  REGISTER
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -1014,36 +874,30 @@ def register():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🔑  LOGIN  — supports both hashed (new) and plain (legacy migration)
+# 🔑  LOGIN
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email    = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
-
-        user = query('SELECT * FROM users WHERE email=%s', (email,), fetchone=True)
+        user     = query('SELECT * FROM users WHERE email=%s', (email,), fetchone=True)
 
         if user:
             pw_hash  = user.get('password_hash') or ''
-            pw_plain = user.get('password') or ''       # legacy column (may not exist)
-            authenticated = False
+            pw_plain = user.get('password') or ''   # legacy plain-text fallback
+            ok       = False
 
             if pw_hash:
-                # Normal path: check bcrypt hash
-                try:
-                    authenticated = check_password_hash(pw_hash, password)
-                except Exception:
-                    authenticated = False
+                try:    ok = check_password_hash(pw_hash, password)
+                except: ok = False
             elif pw_plain:
-                # Legacy plain-text row (SQLite migrants) — auto-upgrade on login
-                authenticated = (pw_plain == password)
-                if authenticated:
-                    new_hash = generate_password_hash(password)
+                ok = (pw_plain == password)
+                if ok:  # auto-upgrade to hash
                     query('UPDATE users SET password_hash=%s WHERE email=%s',
-                          (new_hash, email), commit=True)
+                          (generate_password_hash(password), email), commit=True)
 
-            if authenticated:
+            if ok:
                 session['user_name']  = user['name']
                 session['user_email'] = user['email']
                 return redirect(url_for('index'))
@@ -1062,21 +916,11 @@ def logout():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🔔  NOTIFICATIONS  (Mongo preferred, SQL fallback)
+# 🔔  NOTIFICATIONS
 # ═══════════════════════════════════════════════════════════════════════════════
-@app.route('/notif/read/<id>')
+@app.route('/notif/read/<int:id>')
 def mark_read(id):
-    me = session.get('user_email', '')
-    if mongo_available():
-        try:
-            get_mongo().notifications.update_one(
-                {'_id': ObjectId(id), 'user_email': me},
-                {'$set': {'is_read': 1}}
-            )
-        except Exception:
-            pass
-    else:
-        query('UPDATE notifications SET is_read=1 WHERE id=%s', (id,), commit=True)
+    query('UPDATE notifications SET is_read=1 WHERE id=%s', (id,), commit=True)
     return redirect(url_for('notifications'))
 
 
@@ -1084,15 +928,8 @@ def mark_read(id):
 def notifications():
     if 'user_email' not in session:
         return redirect(url_for('login'))
-    me = session['user_email']
-
-    if mongo_available():
-        raw    = list(get_mongo().notifications.find(
-            {'user_email': me}).sort('_id', DESCENDING))
-        notifs = [_Row({**n, 'id': str(n['_id'])}) for n in raw]
-    else:
-        notifs = query('SELECT * FROM notifications WHERE user_email=%s ORDER BY id DESC',
-                       (me,), fetchall=True) or []
+    notifs = query('SELECT * FROM notifications WHERE user_email=%s ORDER BY id DESC',
+                   (session['user_email'],), fetchall=True) or []
     return render_template('notifications.html', notifs=notifs)
 
 
@@ -1108,12 +945,7 @@ def edit_profile():
         name  = request.form.get('name')
         phone = request.form.get('phone')
         bio   = request.form.get('bio')
-        photo = ''
-        f = request.files.get('photo_file')
-        if f and f.filename:
-            photo = upload_to_cloudinary(f, 'tripzy/profiles')
-        if not photo:
-            photo = request.form.get('photo_url', '')
+        photo = request.form.get('photo_url', '')  # URL only until Cloudinary added
         query('UPDATE users SET name=%s,phone=%s,bio=%s,photo=%s WHERE email=%s',
               (name, phone, bio, photo, me), commit=True)
         session['user_name'] = name
@@ -1138,8 +970,8 @@ def submit_review(ride_id):
 
     if not query('SELECT id FROM reviews WHERE ride_id=%s AND reviewer_email=%s',
                  (ride_id, me), fetchone=True):
-        query('''INSERT INTO reviews(ride_id,reviewer_email,reviewee_email,
-                                     reviewer_role,stars,review_text,created_at)
+        query('''INSERT INTO reviews
+                   (ride_id,reviewer_email,reviewee_email,reviewer_role,stars,review_text,created_at)
                  VALUES(%s,%s,%s,%s,%s,%s,%s)''',
               (ride_id, me, reviewee, role, stars, text, now), commit=True)
         all_rev = query('SELECT stars FROM reviews WHERE reviewee_email=%s',
@@ -1165,38 +997,31 @@ def rate(id):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🩺  HEALTH CHECK  (Render uses this to confirm the app is alive)
+# 🩺  HEALTH + DB STATUS  (used by test page)
 # ═══════════════════════════════════════════════════════════════════════════════
+@app.route('/health')
+def health():
+    pg_ok = False
+    try:
+        query('SELECT 1 AS ok', fetchone=True)
+        pg_ok = True
+    except Exception:
+        pass
+    return jsonify(status='ok', postgres=pg_ok, mongo=False), 200
+
+
 @app.route('/db-status')
 def db_status():
-    """Full infrastructure status used by the test page."""
     pg_ok  = False
     pg_err = ''
     try:
-        result = query('SELECT 1 AS ok', fetchone=True)
-        pg_ok  = bool(result)
+        query('SELECT 1 AS ok', fetchone=True)
+        pg_ok = True
     except Exception as e:
         pg_err = str(e)
 
-    mg_ok   = False
-    mg_cols = []
-    mg_db   = ''
-    mg_err  = ''
-    if USE_MONGO:
-        try:
-            mdb     = get_mongo()
-            mg_cols = mdb.list_collection_names()
-            mg_db   = mdb.name
-            mg_ok   = True
-        except Exception as e:
-            mg_err = str(e)
-    else:
-        mg_err = 'MONGO_URL not set'
-
     cl_name    = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
     cl_key_set = bool(os.environ.get('CLOUDINARY_API_KEY', ''))
-    cl_sec_set = bool(os.environ.get('CLOUDINARY_API_SECRET', ''))
-    cl_ok      = bool(cl_name and cl_key_set and cl_sec_set)
 
     return jsonify(
         status     = 'ok',
@@ -1204,40 +1029,30 @@ def db_status():
             backend          = 'postgresql' if USE_POSTGRES else 'sqlite',
             postgres_url_set = USE_POSTGRES,
             connected        = pg_ok,
-            driver           = 'psycopg v3' if USE_POSTGRES else 'sqlite3',
+            driver           = 'psycopg2' if USE_POSTGRES else 'sqlite3',
             error            = pg_err or None,
         ),
-        mongodb    = dict(
-            connected   = mg_ok,
-            collections = mg_cols,
-            db_name     = mg_db,
-            error       = mg_err or None,
-        ),
+        mongodb    = dict(connected=False, collections=[], error='Not configured yet'),
         cloudinary = dict(
-            configured  = cl_ok,
+            configured  = bool(cl_name and cl_key_set),
             cloud_name  = cl_name or None,
             api_key_set = cl_key_set,
-            secret_set  = cl_sec_set,
         ),
     )
 
 
 @app.route('/db-test-read')
 def db_test_read():
-    """Read back the latest ride for the logged-in user (used by test page write cycle)."""
     ride_id = request.args.get('ride_id')
     me      = session.get('user_email', '')
-
     if ride_id:
-        ride = query('SELECT id, seats, from_loc, to_loc FROM rides WHERE id=%s',
+        ride = query('SELECT id,seats,from_loc,to_loc FROM rides WHERE id=%s',
                      (ride_id,), fetchone=True)
     elif me:
-        ride = query(
-            'SELECT id, seats, from_loc, to_loc FROM rides WHERE user_email=%s ORDER BY id DESC LIMIT 1',
-            (me,), fetchone=True)
+        ride = query('SELECT id,seats,from_loc,to_loc FROM rides WHERE user_email=%s '
+                     'ORDER BY id DESC LIMIT 1', (me,), fetchone=True)
     else:
         ride = None
-
     if ride:
         return jsonify(status='ok', ride_id=ride['id'], seats=ride['seats'],
                        from_loc=ride['from_loc'], to_loc=ride['to_loc'])
@@ -1249,17 +1064,12 @@ def test_page():
     return render_template('test_tripzy.html')
 
 
-@app.route('/health')
-def health():
-    return jsonify(status='ok', postgres=USE_POSTGRES, mongo=mongo_available()), 200
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
-# ❌  ERROR PAGES  (no raw stack traces in production)
+# ❌  ERROR HANDLERS
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.errorhandler(404)
 def not_found(e):
-    return render_template('base.html'), 404   # shows nav, no stack trace
+    return render_template('base.html'), 404
 
 @app.errorhandler(500)
 def server_error(e):
