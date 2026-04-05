@@ -20,8 +20,8 @@ from flask import (Flask, render_template, request,
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── detect which backends are available ──────────────────────────────────────
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://trripzy_user:pUUtklU986x0iZwa1jQRFM2hJjToIazb@dpg-d77joabuibrs73c1o1d0-a/trripzy')
-MONGO_URL    = os.environ.get('MONGO_URL', 'mongodb+srv://hghaste_db_user:Himanshu1202@cluster0.9n0k1zt.mongodb.net/?')
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+MONGO_URL    = os.environ.get('MONGO_URL', '')
 USE_POSTGRES = bool(DATABASE_URL)
 USE_MONGO    = bool(MONGO_URL)
 
@@ -37,16 +37,15 @@ if USE_MONGO:
 
 # ─────────────────────────────────────────────────────────────────────────────
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'tripzy_secret_2024')
+app.secret_key = os.environ.get('SECRET_KEY', 'tripzy_dev_secret_change_in_prod')
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ☁️  CLOUDINARY
 # ═══════════════════════════════════════════════════════════════════════════════
 cloudinary.config(
-    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', 'dusl8hilm'),
-    api_key    =os.environ.get('CLOUDINARY_API_KEY',    '933863442389513'),
-    api_secret =os.environ.get('CLOUDINARY_API_SECRET', 'cFb8XFiwqyuSd_TcmwbhSd89st0'),
-    CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL', 'cloudinary://933863442389513:cFb8XFiwqyuSd_TcmwbhSd89st0@dusl8hilm')
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+    api_key    =os.environ.get('CLOUDINARY_API_KEY',    ''),
+    api_secret =os.environ.get('CLOUDINARY_API_SECRET', ''),
 )
 
 def upload_to_cloudinary(file_obj, folder='tripzy'):
@@ -81,17 +80,39 @@ def _get_pg_pool():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🍃  MONGODB  — lazy singleton
+# 🍃  MONGODB  — lazy singleton with graceful fallback on auth error
 # ═══════════════════════════════════════════════════════════════════════════════
 _mongo_client = None
 _mongo_db     = None
+_mongo_ok     = None   # None=untested  True=working  False=failed permanently
 
 def get_mongo():
-    global _mongo_client, _mongo_db
+    global _mongo_client, _mongo_db, _mongo_ok
     if _mongo_db is None:
         _mongo_client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
-        _mongo_db     = _mongo_client.get_default_database()
+        _mongo_client.admin.command("ping")   # force real auth check
+        _mongo_db = _mongo_client.get_default_database()
+        _mongo_ok = True
     return _mongo_db
+
+
+def mongo_available():
+    """Returns True only when MONGO_URL is set AND connection actually works."""
+    global _mongo_ok
+    if not USE_MONGO:
+        return False
+    if _mongo_ok is True:
+        return True
+    if _mongo_ok is False:
+        return False
+    # first call — try to connect
+    try:
+        get_mongo()
+        return True
+    except Exception as e:
+        app.logger.error(f"MongoDB unavailable: {e}")
+        _mongo_ok = False
+        return False
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -347,7 +368,7 @@ def inject_counts():
         return dict(notif_count=0, unread_msgs=0)
     me = session['user_email']
     try:
-        if USE_MONGO:
+        if mongo_available():
             mdb          = get_mongo()
             notif_count  = mdb.notifications.count_documents({'user_email': me, 'is_read': 0})
             unread_msgs  = mdb.messages.count_documents({'receiver': me, 'is_read': 0})
@@ -416,7 +437,7 @@ def is_bookable(ride, requested=1):
 # ═══════════════════════════════════════════════════════════════════════════════
 def send_notification(user_email, message):
     now = datetime.now().strftime('%d %b, %I:%M %p')
-    if USE_MONGO:
+    if mongo_available():
         get_mongo().notifications.insert_one({
             'user_email': user_email,
             'message':    message,
@@ -745,7 +766,7 @@ def inbox():
         return redirect(url_for('login'))
     me = session['user_email']
 
-    if USE_MONGO:
+    if mongo_available():
         mdb = get_mongo()
         # Latest message per (other_email, ride_id) conversation
         pipeline = [
@@ -836,7 +857,7 @@ def chat(user):
             now_full = datetime.now().strftime('%d %b, %I:%M %p')
             ride_label = (f" on ride {ride_context['from_loc']} → {ride_context['to_loc']}"
                           if ride_context else '')
-            if USE_MONGO:
+            if mongo_available():
                 get_mongo().messages.insert_one({
                     'sender': me, 'receiver': user,
                     'message': msg_text, 'time': now_time,
@@ -851,7 +872,7 @@ def chat(user):
         return redirect(url_for('chat', user=user, ride_id=rid or ''))
 
     # Mark as read
-    if USE_MONGO:
+    if mongo_available():
         get_mongo().messages.update_many(
             {'receiver': me, 'sender': user, 'ride_id': rid_int, 'is_read': 0},
             {'$set': {'is_read': 1}}
@@ -1046,7 +1067,7 @@ def logout():
 @app.route('/notif/read/<id>')
 def mark_read(id):
     me = session.get('user_email', '')
-    if USE_MONGO:
+    if mongo_available():
         try:
             get_mongo().notifications.update_one(
                 {'_id': ObjectId(id), 'user_email': me},
@@ -1065,7 +1086,7 @@ def notifications():
         return redirect(url_for('login'))
     me = session['user_email']
 
-    if USE_MONGO:
+    if mongo_available():
         raw    = list(get_mongo().notifications.find(
             {'user_email': me}).sort('_id', DESCENDING))
         notifs = [_Row({**n, 'id': str(n['_id'])}) for n in raw]
@@ -1146,36 +1167,9 @@ def rate(id):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🩺  HEALTH CHECK  (Render uses this to confirm the app is alive)
 # ═══════════════════════════════════════════════════════════════════════════════
-@app.route('/health')
-def health():
-    return jsonify(status='ok', postgres=USE_POSTGRES, mongo=USE_MONGO), 200
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# ❌  ERROR PAGES  (no raw stack traces in production)
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.errorhandler(404)
-def not_found(e):
-    return render_template('base.html'), 404   # shows nav, no stack trace
-
-@app.errorhandler(500)
-def server_error(e):
-    app.logger.error(f'500: {e}')
-    return render_template('base.html'), 500
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 🔬  TEST / DIAGNOSTIC ROUTES
-#     Add these to run.py alongside your other routes.
-#     The HTML test page (test_tripzy.html) calls all of these.
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
 @app.route('/db-status')
 def db_status():
-    """Full infrastructure status: PostgreSQL, MongoDB, Cloudinary."""
-
-    # ── PostgreSQL ────────────────────────────────────────────────
+    """Full infrastructure status used by the test page."""
     pg_ok  = False
     pg_err = ''
     try:
@@ -1184,15 +1178,6 @@ def db_status():
     except Exception as e:
         pg_err = str(e)
 
-    pg_info = dict(
-        backend         = 'postgresql' if USE_POSTGRES else 'sqlite',
-        postgres_url_set= USE_POSTGRES,
-        connected       = pg_ok,
-        driver          = 'psycopg v3' if USE_POSTGRES else 'sqlite3',
-        error           = pg_err or None,
-    )
-
-    # ── MongoDB ───────────────────────────────────────────────────
     mg_ok   = False
     mg_cols = []
     mg_db   = ''
@@ -1208,41 +1193,38 @@ def db_status():
     else:
         mg_err = 'MONGO_URL not set'
 
-    mg_info = dict(
-        connected  = mg_ok,
-        collections= mg_cols,
-        db_name    = mg_db,
-        error      = mg_err or None,
-    )
-
-    # ── Cloudinary ────────────────────────────────────────────────
     cl_name    = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
     cl_key_set = bool(os.environ.get('CLOUDINARY_API_KEY', ''))
     cl_sec_set = bool(os.environ.get('CLOUDINARY_API_SECRET', ''))
     cl_ok      = bool(cl_name and cl_key_set and cl_sec_set)
 
-    cl_info = dict(
-        configured  = cl_ok,
-        cloud_name  = cl_name or None,
-        api_key_set = cl_key_set,
-        secret_set  = cl_sec_set,
-    )
-
     return jsonify(
-        status      = 'ok',
-        postgresql  = pg_info,
-        mongodb     = mg_info,
-        cloudinary  = cl_info,
+        status     = 'ok',
+        postgresql = dict(
+            backend          = 'postgresql' if USE_POSTGRES else 'sqlite',
+            postgres_url_set = USE_POSTGRES,
+            connected        = pg_ok,
+            driver           = 'psycopg v3' if USE_POSTGRES else 'sqlite3',
+            error            = pg_err or None,
+        ),
+        mongodb    = dict(
+            connected   = mg_ok,
+            collections = mg_cols,
+            db_name     = mg_db,
+            error       = mg_err or None,
+        ),
+        cloudinary = dict(
+            configured  = cl_ok,
+            cloud_name  = cl_name or None,
+            api_key_set = cl_key_set,
+            secret_set  = cl_sec_set,
+        ),
     )
 
 
 @app.route('/db-test-read')
 def db_test_read():
-    """
-    Read back the most recently created ride for the logged-in user,
-    or a specific ride_id passed as ?ride_id=N.
-    Used by the write-cycle test in test_tripzy.html.
-    """
+    """Read back the latest ride for the logged-in user (used by test page write cycle)."""
     ride_id = request.args.get('ride_id')
     me      = session.get('user_email', '')
 
@@ -1250,24 +1232,40 @@ def db_test_read():
         ride = query('SELECT id, seats, from_loc, to_loc FROM rides WHERE id=%s',
                      (ride_id,), fetchone=True)
     elif me:
-        ride = query('SELECT id, seats, from_loc, to_loc FROM rides WHERE user_email=%s ORDER BY id DESC LIMIT 1',
-                     (me,), fetchone=True)
+        ride = query(
+            'SELECT id, seats, from_loc, to_loc FROM rides WHERE user_email=%s ORDER BY id DESC LIMIT 1',
+            (me,), fetchone=True)
     else:
         ride = None
 
     if ride:
-        return jsonify(
-            status  = 'ok',
-            ride_id = ride['id'],
-            seats   = ride['seats'],
-            from_loc= ride['from_loc'],
-            to_loc  = ride['to_loc'],
-        )
+        return jsonify(status='ok', ride_id=ride['id'], seats=ride['seats'],
+                       from_loc=ride['from_loc'], to_loc=ride['to_loc'])
     return jsonify(status='not_found', error='No ride found'), 404
+
 
 @app.route('/test')
 def test_page():
     return render_template('test_tripzy.html')
+
+
+@app.route('/health')
+def health():
+    return jsonify(status='ok', postgres=USE_POSTGRES, mongo=mongo_available()), 200
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ❌  ERROR PAGES  (no raw stack traces in production)
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.errorhandler(404)
+def not_found(e):
+    return render_template('base.html'), 404   # shows nav, no stack trace
+
+@app.errorhandler(500)
+def server_error(e):
+    app.logger.error(f'500: {e}')
+    return render_template('base.html'), 500
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🚀  ENTRYPOINT
