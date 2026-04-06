@@ -5,3 +5,4 @@ pymongo==4.7.2
 dnspython==2.6.1
 cloudinary==1.40.0
 werkzeug==3.0.3
+pymongo[srv]==3.12
