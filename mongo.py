@@ -12,7 +12,7 @@ from datetime import datetime
 # The env var the code reads — set MONGO_URL in Render dashboard
 MONGO_URL = os.environ.get(
     'MONGO_URL',
-    ''   # empty = disabled, falls back to PostgreSQL
+    'mongodb+srv://hghaste_db_user:Ghaste9119@cluster0.9n0k1zt.mongodb.net/?appName=Cluster0'   # empty = disabled, falls back to PostgreSQL
 )
 
 _client = None   # cached MongoClient
