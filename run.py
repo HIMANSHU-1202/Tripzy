@@ -30,9 +30,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── env ───────────────────────────────────────────────────────────────────────
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
-MONGODB_URL    = os.environ.get('MONGODB_URL', '')
+MONGO_URL    = os.environ.get('MONGO_URL', '')
 USE_POSTGRES = bool(DATABASE_URL)
-USE_MONGO    = bool(MONGODB_URL)
+USE_MONGO    = bool(MONGO_URL)
 
 if USE_POSTGRES:
     import psycopg2
