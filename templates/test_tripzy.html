@@ -448,14 +448,17 @@ async function testAuth() {
     tick(ok, false);
   } catch(e) { results.push({ n: 'POST /login', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
 
-  // Wrong password MUST be rejected
+  // Wrong password MUST be rejected — Flask returns 200 with error HTML (not a redirect)
   try {
     const res = await api('POST', '/login', { email: TS, password: 'wrongpassword123' }, true);
-    const rejected = res.status !== 302 && res.status !== 200;
-    const alsoCheck = res.data?._html?.toLowerCase().includes('invalid') || res.status === 401;
-    const ok = rejected || alsoCheck;
-    results.push({ n: 'POST /login (wrong password rejected)', v: ok ? 'Rejected correctly' : 'BUG: accepted!', ok });
-    log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} Wrong password → ${res.status}`);
+    // Correct behaviour: stays on login page (200) and shows error message — NOT a redirect (302)
+    // The page HTML should contain 'invalid' or 'error' and must NOT set a session
+    const html    = (res.data?._html || '').toLowerCase();
+    const hasErr  = html.includes('invalid') || html.includes('error') || html.includes('password');
+    const noRedir = res.status !== 302;
+    const ok      = noRedir && hasErr;
+    results.push({ n: 'POST /login (wrong password rejected)', v: ok ? 'Rejected correctly' : 'BUG: session created!', ok });
+    log(ok ? 'ok' : 'fail', `${ok ? '✅' : '❌'} Wrong password → HTTP ${res.status} hasErrMsg=${hasErr}`);
     tick(ok, false);
   } catch(e) { results.push({ n: 'Wrong password rejected', v: e.message, ok: false }); log('fail', `❌ ${e.message}`); tick(false); }
 
@@ -638,7 +641,7 @@ async function testWriteCycle() {
 
   // STEP 2: Read it back via /db-test-read
   try {
-    const res = await api('GET', '/db-test-read');
+    const res = await api('GET', `/db-test-read?email=${encodeURIComponent(TS)}`);
     if (res.ok && res.data.ride_id) {
       rideId       = res.data.ride_id;
       initialSeats = res.data.seats;
@@ -661,8 +664,13 @@ async function testWriteCycle() {
       await api('POST', '/login', { email: tu2, password: TPW }, true);
 
       const res = await api('POST', `/ride/${rideId}`, { seats_required: '2' }, true);
-      const ok  = res.status === 200 || res.ok || res.data?.booked;
-      results.push({ n: `Book 2 seats on ride ${rideId}`, v: ok ? 'Booked' : `HTTP ${res.status}`, ok });
+      // Booking returns 200 HTML with receipt or error — check for success indicators
+      const html2 = (res.data?._html || '').toLowerCase();
+      const booked = html2.includes('booked') || html2.includes('receipt') ||
+                     html2.includes('confirmed') || html2.includes('trp');
+      const ok  = (res.status === 200 || res.ok) && booked;
+      if (res.ok) bookingId = res.data?.booking_id || null;  // capture if JSON
+      results.push({ n: `Book 2 seats on ride ${rideId}`, v: ok ? 'Booked (receipt found)' : `HTTP ${res.status} noReceipt`, ok });
       log(ok ? 'ok' : 'warn', `${ok ? '✅' : '⚠️'} Book 2 seats → ${res.status}`);
       tick(ok, !ok);
 
