@@ -41,6 +41,7 @@ if USE_POSTGRES:
 
 if USE_MONGO:
     from pymongo import MongoClient, DESCENDING
+    from pymongo.server_api import ServerApi
     from bson   import ObjectId
 
 # ── app ───────────────────────────────────────────────────────────────────────
@@ -109,7 +110,14 @@ _mongo_ok     = None   # None=untested  True=working  False=broken
 def get_mongo():
     global _mongo_client, _mongo_db, _mongo_ok
     if _mongo_db is None:
-        _mongo_client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000)
+        # Use ServerApi v1 + TLS — same pattern that works on Atlas
+        _mongo_client = MongoClient(
+            MONGO_URL,
+            server_api=ServerApi('1'),
+            serverSelectionTimeoutMS=5000,
+            tls=True,
+            tlsAllowInvalidCertificates=True,
+        )
         _mongo_client.admin.command('ping')   # raises immediately if auth fails
         _mongo_db = _mongo_client.get_default_database()
         _mongo_ok = True
@@ -1124,12 +1132,26 @@ def login():
                           (generate_password_hash(password), email), commit=True)
 
             if ok:
+                # Block internal test accounts from logging into the real app
+                if '@dbtest.local' in user['email'] or '@test.com' in user['email']:
+                    return render_template('login.html',
+                                           error='This is an internal test account')
                 session['user_name']  = user['name']
                 session['user_email'] = user['email']
                 return redirect(url_for('index'))
 
         return render_template('login.html', error='Invalid email or password')
     return render_template('login.html')
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🧹  CLEAR STALE SESSION  (fixes "Welcome DB Tester" after test runs)
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.route('/clear-session')
+def clear_session():
+    """Clear any stale test session and redirect to login."""
+    session.clear()
+    return redirect(url_for('login'))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1213,6 +1235,44 @@ def rate(id):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🩺  HEALTH + DB STATUS + TEST HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
+@app.route('/cleanup-test-data')
+def cleanup_test_data():
+    """Remove test accounts and their data created by the test page."""
+    try:
+        # Find all test emails
+        test_users = query(
+            "SELECT email FROM users WHERE email LIKE %s OR email LIKE %s",
+            ('%@dbtest.local', '%tripzy_test_%'), fetchall=True) or []
+
+        count = 0
+        for u in test_users:
+            em = u['email']
+            # Delete all associated data
+            query('DELETE FROM bookings  WHERE user_email=%s', (em,), commit=True)
+            query('DELETE FROM rides     WHERE user_email=%s', (em,), commit=True)
+            query('DELETE FROM reviews   WHERE reviewer_email=%s OR reviewee_email=%s',
+                  (em, em), commit=True)
+            if not mongo_ok():
+                query('DELETE FROM messages      WHERE sender=%s OR receiver=%s',
+                      (em, em), commit=True)
+                query('DELETE FROM notifications WHERE user_email=%s', (em,), commit=True)
+            query('DELETE FROM users WHERE email=%s', (em,), commit=True)
+            count += 1
+
+        # Also clean Mongo if available
+        if mongo_ok():
+            mdb = get_mongo()
+            mdb.messages.delete_many({'$or': [
+                {'sender':   {'$regex': '@dbtest.local'}},
+                {'receiver': {'$regex': '@dbtest.local'}},
+            ]})
+            mdb.notifications.delete_many({'user_email': {'$regex': '@dbtest.local'}})
+
+        return jsonify(status='ok', deleted_users=count)
+    except Exception as e:
+        return jsonify(status='error', error=str(e)), 500
+
+
 @app.route('/health')
 def health():
     pg_ok = False
